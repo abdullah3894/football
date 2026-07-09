@@ -322,6 +322,15 @@
       min-width:480px;
       box-shadow:none;
     }
+    .scorers-table table{
+      min-width:0;
+      max-width:320px;
+      margin:0 auto;
+    }
+    .scorers-table th,.scorers-table td{
+      padding:6px 6px;
+      font-size:12px;
+    }
     th,td{padding:8px 8px;font-size:12.5px;}
   }
 </style>
@@ -613,7 +622,7 @@ function renderStandingsPage(){
       </section>
       <section class="block">
         <h2>الهدافون — ${league.name}</h2>
-        <div class="table-scroll">
+        <div class="table-scroll scorers-table">
           <table>
             <thead><tr><th>#</th><th style="text-align:right">اللاعب</th><th>الأهداف</th></tr></thead>
             <tbody>${scorersRows || `<tr><td colspan="3" class="subtle">لا يوجد هدافون مضافون بعد</td></tr>`}</tbody>
