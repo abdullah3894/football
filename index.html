@@ -125,7 +125,7 @@
   .match-row .side{flex:1;font-family:'Cairo';font-weight:600;font-size:14px;}
   .match-row .side.home{text-align:left;}
   .match-row .side.away{text-align:right;}
-  .match-row .center{text-align:center;min-width:90px;}
+  .match-row .center {text-align:center;min-width:90px;}
   .match-row .center .mono{font-size:18px;font-weight:700;}
   .status-pill{font-size:11px;padding:2px 10px;border-radius:999px;display:inline-block;margin-top:4px;font-family:'Cairo';}
   .status-scheduled{background:var(--pitch-line);color:var(--paper-dim);}
@@ -210,9 +210,22 @@
 
 <footer>منصة إدارة دوريات كرة القدم — البيانات محفوظة ومشتركة بين الزوار</footer>
 
-<script>
-let state = { leagues: [], activeLeagueId: null, announcements: [], regulationsText: '' };
-let mode = 'public'; // 'public' | 'admin' | 'regulations'
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+// إعدادات قاعدة البيانات الخاصة بمشروعك
+const firebaseConfig = {
+  databaseURL: "https://football-79578-default-rtdb.firebaseio.com"
+};
+
+// تهيئة الاتصال
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getDatabase(firebaseApp);
+const dbRef = ref(db);
+
+window.state = { leagues: [], activeLeagueId: null, announcements: [], regulationsText: '' };
+let mode = 'public'; 
 let adminUnlocked = false;
 const ADMIN_PIN = '12e34e';
 
@@ -220,22 +233,25 @@ function uid(){ return Math.random().toString(36).slice(2,9); }
 
 async function loadState(){
   try{
-    const res = await window.storage.get('league-app-state', true);
-    if(res && res.value){ state = JSON.parse(res.value); }
-  }catch(e){ console.log('no existing state yet'); }
-  if(!state.announcements) state.announcements = [];
-  if(typeof state.regulationsText !== 'string') state.regulationsText = '';
-  if(!state.activeLeagueId && state.leagues.length){ state.activeLeagueId = state.leagues[0].id; }
+    const snapshot = await get(child(dbRef, 'league-app-state'));
+    if (snapshot.exists()) {
+      window.state = snapshot.val();
+    }
+  }catch(e){ console.log('لا توجد بيانات محفوظة بعد في السحابة', e); }
+  if(!window.state.announcements) window.state.announcements = [];
+  if(typeof window.state.regulationsText !== 'string') window.state.regulationsText = '';
+  if(!window.state.activeLeagueId && window.state.leagues.length){ window.state.activeLeagueId = window.state.leagues[0].id; }
   render();
 }
+
 async function saveState(){
   try{
-    await window.storage.set('league-app-state', JSON.stringify(state), true);
-  }catch(e){ console.error('save failed', e); }
+    await set(ref(db, 'league-app-state'), window.state);
+  }catch(e){ console.error('فشل في حفظ وتحديث البيانات سحابياً', e); }
 }
 
 function activeLeague(){
-  return state.leagues.find(l=>l.id===state.activeLeagueId) || null;
+  return window.state.leagues.find(l=>l.id===window.state.activeLeagueId) || null;
 }
 function teamName(league, teamId){
   const t = league.teams.find(t=>t.id===teamId);
@@ -291,19 +307,19 @@ function render(){
 
 function renderTabs(){
   const wrap = document.getElementById('leagueTabs');
-  if(!state.leagues.length){ wrap.innerHTML=''; return; }
-  wrap.innerHTML = state.leagues.map(l=>
-    `<button class="league-tab ${l.id===state.activeLeagueId?'active':''}" data-league="${l.id}">${l.name}</button>`
+  if(!window.state.leagues.length){ wrap.innerHTML=''; return; }
+  wrap.innerHTML = window.state.leagues.map(l=>
+    `<button class="league-tab ${l.id===window.state.activeLeagueId?'active':''}" data-league="${l.id}">${l.name}</button>`
   ).join('');
 }
 
 function renderPublic(){
   const league = activeLeague();
   if(!league){
-    const noLeagueAnnouncements = state.announcements.length ? `
+    const noLeagueAnnouncements = window.state.announcements.length ? `
       <div class="announcements-board">
         <h2>التصاريح</h2>
-        ${state.announcements.slice().reverse().map(a=>`
+        ${window.state.announcements.slice().reverse().map(a=>`
           <div class="announcement-item">
             <div class="announcement-text">${a.text}</div>
             <div class="announcement-date">${a.date}</div>
@@ -366,10 +382,10 @@ function renderPublic(){
     </div>
   `).join('') : `<p class="subtle">لا توجد جداول مباريات بعد.</p>`;
 
-  const announcementsHtml = state.announcements.length ? `
+  const announcementsHtml = window.state.announcements.length ? `
     <div class="announcements-board">
       <h2>التصاريح</h2>
-      ${state.announcements.slice().reverse().map(a=>`
+      ${window.state.announcements.slice().reverse().map(a=>`
         <div class="announcement-item">
           <div class="announcement-text">${a.text}</div>
           <div class="announcement-date">${a.date}</div>
@@ -395,7 +411,7 @@ function renderPublic(){
 }
 
 function renderRegulations(){
-  const text = state.regulationsText.trim();
+  const text = window.state.regulationsText.trim();
   return `
     <section class="block">
       <h2>لوائح اللجنة الرياضية</h2>
@@ -417,9 +433,9 @@ function renderAdmin(){
 
   const league = activeLeague();
 
-  const leaguesListHtml = state.leagues.map(l=>`
+  const leaguesListHtml = window.state.leagues.map(l=>`
     <div class="league-row">
-      <span>${l.name} ${l.id===state.activeLeagueId ? '<span class="subtle">(محدد حالياً)</span>' : ''}</span>
+      <span>${l.name} ${l.id===window.state.activeLeagueId ? '<span class="subtle">(محدد حالياً)</span>' : ''}</span>
       <div class="row-inline">
         <button class="btn ghost small" data-select-league="${l.id}">تحديد</button>
         <button class="btn danger small" data-delete-league="${l.id}">حذف</button>
@@ -491,7 +507,7 @@ function renderAdmin(){
     `;
   }
 
-  const announcementsAdminHtml = state.announcements.slice().reverse().map(a=>`
+  const announcementsAdminHtml = window.state.announcements.slice().reverse().map(a=>`
     <div class="league-row">
       <span>${a.text} <span class="subtle">(${a.date})</span></span>
       <button class="btn danger small" data-delete-announcement="${a.id}">حذف</button>
@@ -510,7 +526,7 @@ function renderAdmin(){
 
     <div class="admin-card">
       <h3>لوائح اللجنة الرياضية</h3>
-      <textarea id="regulationsTextArea" placeholder="اكتب لوائح اللجنة الرياضية هنا...">${state.regulationsText}</textarea>
+      <textarea id="regulationsTextArea" placeholder="اكتب لوائح اللجنة الرياضية هنا...">${window.state.regulationsText}</textarea>
       <div class="row-inline" style="margin-top:10px;">
         <button class="btn small" id="saveRegulationsBtn">حفظ اللوائح</button>
       </div>
@@ -534,7 +550,7 @@ function attachHandlers(){
   document.getElementById('btnRegs').onclick = ()=>{ mode='regulations'; render(); };
 
   document.querySelectorAll('[data-league]').forEach(b=>{
-    b.onclick = ()=>{ state.activeLeagueId = b.dataset.league; render(); };
+    b.onclick = ()=>{ window.state.activeLeagueId = b.dataset.league; render(); };
   });
 
   if(!adminUnlocked && mode==='admin'){
@@ -554,19 +570,19 @@ function attachHandlers(){
     if(!text) return;
     const now = new Date();
     const date = now.toISOString().slice(0,10);
-    state.announcements.push({id:uid(), text, date});
+    window.state.announcements.push({id:uid(), text, date});
     saveState(); render();
   };
   document.querySelectorAll('[data-delete-announcement]').forEach(b=>{
     b.onclick = ()=>{
-      state.announcements = state.announcements.filter(a=>a.id!==b.dataset.deleteAnnouncement);
+      window.state.announcements = window.state.announcements.filter(a=>a.id!==b.dataset.deleteAnnouncement);
       saveState(); render();
     };
   });
 
   const saveRegulationsBtn = document.getElementById('saveRegulationsBtn');
   if(saveRegulationsBtn) saveRegulationsBtn.onclick = ()=>{
-    state.regulationsText = document.getElementById('regulationsTextArea').value;
+    window.state.regulationsText = document.getElementById('regulationsTextArea').value;
     saveState();
     alert('تم حفظ اللوائح');
   };
@@ -576,20 +592,20 @@ function attachHandlers(){
     const name = document.getElementById('newLeagueName').value.trim();
     if(!name) return;
     const l = {id:uid(), name, teams:[], matchdays:[]};
-    state.leagues.push(l);
-    state.activeLeagueId = l.id;
+    window.state.leagues.push(l);
+    window.state.activeLeagueId = l.id;
     saveState(); render();
   };
 
   document.querySelectorAll('[data-select-league]').forEach(b=>{
-    b.onclick = ()=>{ state.activeLeagueId = b.dataset.selectLeague; render(); };
+    b.onclick = ()=>{ window.state.activeLeagueId = b.dataset.selectLeague; render(); };
   });
   document.querySelectorAll('[data-delete-league]').forEach(b=>{
     b.onclick = ()=>{
       if(!confirm('حذف هذا الدوري نهائياً؟')) return;
-      state.leagues = state.leagues.filter(l=>l.id!==b.dataset.deleteLeague);
-      if(state.activeLeagueId === b.dataset.deleteLeague){
-        state.activeLeagueId = state.leagues[0]?.id || null;
+      window.state.leagues = window.state.leagues.filter(l=>l.id!==b.dataset.deleteLeague);
+      if(window.state.activeLeagueId === b.dataset.deleteLeague){
+        window.state.activeLeagueId = window.state.leagues[0]?.id || null;
       }
       saveState(); render();
     };
