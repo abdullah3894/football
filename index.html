@@ -3,31 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>منصة الدوريات</title>
+<title>اللجنة الرياضية</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --pitch-dark:#0d1f16;
-    --pitch:#163a26;
-    --pitch-line:#2b5a3c;
-    --gold:#d4a72c;
-    --gold-bright:#f0c94a;
-    --paper:#f2efe4;
-    --paper-dim:#c9c4b2;
+    --bg:#f6f3e9;
+    --panel:#ffffff;
+    --panel-alt:#f1eee0;
+    --border:#ddd5ba;
+    --text:#26301f;
+    --text-dim:#847f68;
+    --brand-dark:#1f4d33;
+    --brand-darker:#163a26;
+    --gold:#b9862b;
+    --gold-bright:#d7a23c;
+    --gold-soft:#f3e3bd;
     --red-card:#b8412f;
-    --win:#3f8a5c;
-    --draw:#9a8b4f;
-    --loss:#8a3f3f;
-    --radius:10px;
+    --red-soft:#f6dcd5;
+    --shadow:0 2px 12px rgba(31,77,51,0.07);
   }
   *{box-sizing:border-box;}
   body{
     margin:0;
-    background:var(--pitch-dark);
-    background-image:
-      repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 80px);
-    color:var(--paper);
+    background:var(--bg);
+    color:var(--text);
     font-family:'Tajawal', sans-serif;
     min-height:100vh;
   }
@@ -39,34 +39,35 @@
     align-items:center;
     justify-content:space-between;
     padding:18px 28px;
-    border-bottom:2px solid var(--pitch-line);
-    background:linear-gradient(180deg, var(--pitch) 0%, var(--pitch-dark) 100%);
+    border-bottom:2px solid var(--border);
+    background:var(--panel);
     flex-wrap:wrap;
     gap:12px;
+    box-shadow:var(--shadow);
   }
   .brand{display:flex;align-items:center;gap:10px;}
-  .brand .dot{width:14px;height:14px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px var(--gold);}
-  .brand h1{font-size:22px;margin:0;font-weight:800;letter-spacing:0.5px;}
+  .brand .dot{width:14px;height:14px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(185,134,43,0.5);}
+  .brand h1{font-size:22px;margin:0;font-weight:800;letter-spacing:0.5px;color:var(--brand-dark);}
 
   .league-tabs{display:flex;gap:8px;flex-wrap:wrap;}
   .league-tab{
-    padding:8px 16px;border-radius:999px;border:1px solid var(--pitch-line);
-    background:transparent;color:var(--paper-dim);cursor:pointer;font-family:'Tajawal';font-size:14px;
+    padding:8px 16px;border-radius:999px;border:1px solid var(--border);
+    background:var(--panel-alt);color:var(--text-dim);cursor:pointer;font-family:'Tajawal';font-size:14px;
     transition:all .15s;
   }
-  .league-tab.active{background:var(--gold);color:var(--pitch-dark);border-color:var(--gold);font-weight:700;}
+  .league-tab.active{background:var(--brand-dark);color:#fff;border-color:var(--brand-dark);font-weight:700;}
   .league-tab:hover{border-color:var(--gold);}
 
   .mode-toggle{
-    display:flex;gap:6px;background:var(--pitch-dark);border:1px solid var(--pitch-line);border-radius:999px;padding:4px;
+    display:flex;gap:6px;background:var(--panel-alt);border:1px solid var(--border);border-radius:999px;padding:4px;flex-wrap:wrap;
   }
   .mode-toggle button{
-    border:none;background:transparent;color:var(--paper-dim);padding:8px 16px;border-radius:999px;cursor:pointer;font-family:'Cairo';font-weight:700;font-size:13px;
+    border:none;background:transparent;color:var(--text-dim);padding:8px 16px;border-radius:999px;cursor:pointer;font-family:'Cairo';font-weight:700;font-size:13px;
   }
-  .mode-toggle button.active{background:var(--gold);color:var(--pitch-dark);}
+  .mode-toggle button.active{background:var(--gold);color:#fff;}
 
   main{max-width:1100px;margin:0 auto;padding:28px;}
-  .empty-hint{text-align:center;color:var(--paper-dim);padding:60px 20px;}
+  .empty-hint{text-align:center;color:var(--text-dim);padding:60px 20px;}
   .empty-hint button{margin-top:14px;}
 
   /* Scoreboard hero */
@@ -75,16 +76,13 @@
   }
   @media (max-width:720px){.hero{grid-template-columns:1fr;}}
   .board{
-    background:var(--pitch);
-    border:2px solid var(--pitch-line);
+    background:var(--panel);
+    border:1px solid var(--border);
     border-radius:14px;
     padding:20px 22px;
     position:relative;
     overflow:hidden;
-  }
-  .board::before{
-    content:'';position:absolute;inset:0;
-    background:radial-gradient(circle at 50% 0%, rgba(212,167,44,0.08), transparent 60%);
+    box-shadow:var(--shadow);
   }
   .board .tag{
     display:inline-flex;align-items:center;gap:6px;
@@ -94,101 +92,124 @@
   .board.live .tag{background:var(--red-card);color:#fff;}
   .board.live .tag .pulse{width:8px;height:8px;border-radius:50%;background:#fff;animation:pulse 1.2s infinite;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-  .board.next .tag{background:var(--gold);color:var(--pitch-dark);}
+  .board.next .tag{background:var(--gold-soft);color:var(--gold);}
   .matchup{display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative;z-index:1;}
   .team-block{flex:1;text-align:center;}
-  .team-name{font-family:'Cairo';font-weight:700;font-size:19px;line-height:1.3;}
-  .score{font-family:'Space Mono';font-weight:700;font-size:44px;display:flex;align-items:center;gap:14px;padding:0 8px;}
-  .vs-label{font-family:'Space Mono';color:var(--paper-dim);font-size:13px;}
-  .board .meta{margin-top:14px;color:var(--paper-dim);font-size:13px;font-family:'Space Mono';text-align:center;}
-  .board .motm{margin-top:10px;text-align:center;font-size:13px;color:var(--gold-bright);}
-  .board.empty{display:flex;align-items:center;justify-content:center;color:var(--paper-dim);font-size:14px;min-height:140px;}
+  .team-name{font-family:'Cairo';font-weight:700;font-size:19px;line-height:1.3;color:var(--brand-dark);}
+  .score{font-family:'Space Mono';font-weight:700;font-size:44px;display:flex;align-items:center;gap:14px;padding:0 8px;color:var(--brand-dark);}
+  .vs-label{font-family:'Space Mono';color:var(--text-dim);font-size:13px;}
+  .board .meta{margin-top:14px;color:var(--text-dim);font-size:13px;font-family:'Space Mono';text-align:center;}
+  .board .motm{margin-top:10px;text-align:center;font-size:13px;color:var(--gold);}
+  .board.empty{display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:14px;min-height:140px;}
 
   /* Standings */
   section.block{margin-bottom:40px;}
-  section.block h2{font-size:20px;border-right:4px solid var(--gold);padding-right:12px;margin-bottom:16px;}
-  table{width:100%;border-collapse:collapse;background:var(--pitch);border-radius:10px;overflow:hidden;}
+  section.block h2{font-size:20px;border-right:4px solid var(--gold);padding-right:12px;margin-bottom:16px;color:var(--brand-dark);}
+  table{width:100%;border-collapse:collapse;background:var(--panel);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);}
   th,td{padding:10px 12px;text-align:center;font-size:14px;}
-  th{background:var(--pitch-dark);color:var(--gold);font-family:'Cairo';font-weight:700;font-size:13px;}
+  th{background:var(--brand-dark);color:#fff;font-family:'Cairo';font-weight:700;font-size:13px;}
   td.team-cell{text-align:right;font-family:'Cairo';font-weight:600;}
-  tr:not(:last-child) td{border-bottom:1px solid var(--pitch-line);}
-  tr.rank1 td.team-cell{color:var(--gold-bright);}
+  tr:not(:last-child) td{border-bottom:1px solid var(--border);}
+  tr.rank1 td.team-cell{color:var(--gold);}
+  tr:nth-child(even) td{background:var(--panel-alt);}
 
   /* Fixtures */
-  .matchday{margin-bottom:20px;}
-  .matchday h3{font-size:15px;color:var(--paper-dim);font-weight:500;margin:0 0 10px;font-family:'Cairo';}
+  .matchday{margin-bottom:24px;}
+  .matchday h3{font-size:15px;color:var(--brand-dark);font-weight:700;margin:0 0 10px;font-family:'Cairo';}
+  .matchday-honors{
+    display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;padding:8px 14px;
+    background:var(--gold-soft);border-radius:8px;font-size:13px;color:var(--brand-dark);
+  }
   .match-row{
     display:flex;align-items:center;justify-content:space-between;
-    background:var(--pitch);border:1px solid var(--pitch-line);border-radius:8px;
+    background:var(--panel);border:1px solid var(--border);border-radius:8px;
     padding:12px 16px;margin-bottom:8px;gap:10px;flex-wrap:wrap;
   }
   .match-row .side{flex:1;font-family:'Cairo';font-weight:600;font-size:14px;}
   .match-row .side.home{text-align:left;}
   .match-row .side.away{text-align:right;}
-  .match-row .center {text-align:center;min-width:90px;}
-  .match-row .center .mono{font-size:18px;font-weight:700;}
+  .match-row .center{text-align:center;min-width:90px;}
+  .match-row .center .mono{font-size:18px;font-weight:700;color:var(--brand-dark);}
   .status-pill{font-size:11px;padding:2px 10px;border-radius:999px;display:inline-block;margin-top:4px;font-family:'Cairo';}
-  .status-scheduled{background:var(--pitch-line);color:var(--paper-dim);}
+  .status-scheduled{background:var(--panel-alt);color:var(--text-dim);}
   .status-live{background:var(--red-card);color:#fff;}
-  .status-finished{background:var(--pitch-line);color:var(--gold);}
-  .match-row .motm-tag{width:100%;text-align:center;font-size:12px;color:var(--gold-bright);margin-top:4px;}
+  .status-finished{background:var(--gold-soft);color:var(--gold);}
 
   /* Buttons/forms */
   button{cursor:pointer;font-family:'Tajawal';}
   .btn{
-    background:var(--gold);color:var(--pitch-dark);border:none;border-radius:8px;
+    background:var(--brand-dark);color:#fdfbf3;border:none;border-radius:8px;
     padding:9px 18px;font-weight:700;font-family:'Cairo';font-size:14px;
   }
-  .btn:hover{background:var(--gold-bright);}
-  .btn.ghost{background:transparent;border:1px solid var(--pitch-line);color:var(--paper);}
-  .btn.ghost:hover{border-color:var(--gold);}
+  .btn:hover{background:var(--brand-darker);}
+  .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
+  .btn.ghost:hover{border-color:var(--gold);color:var(--gold);}
   .btn.danger{background:var(--red-card);color:#fff;}
   .btn.small{padding:6px 12px;font-size:12px;}
+  .btn.tiny{padding:3px 9px;font-size:14px;line-height:1;}
   input,select{
-    background:var(--pitch-dark);border:1px solid var(--pitch-line);color:var(--paper);
+    background:var(--panel);border:1px solid var(--border);color:var(--text);
     padding:9px 12px;border-radius:8px;font-family:'Tajawal';font-size:14px;
   }
   input:focus,select:focus{outline:none;border-color:var(--gold);}
 
   .admin-card{
-    background:var(--pitch);border:1px solid var(--pitch-line);border-radius:12px;padding:20px;margin-bottom:24px;
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:24px;box-shadow:var(--shadow);
   }
-  .admin-card h3{margin:0 0 14px;font-size:16px;color:var(--gold);}
+  .admin-card h3{margin:0 0 14px;font-size:16px;color:var(--brand-dark);}
   .row-inline{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
   .team-chip{
-    display:inline-flex;align-items:center;gap:8px;background:var(--pitch-dark);
-    border:1px solid var(--pitch-line);border-radius:999px;padding:6px 12px;font-size:13px;margin:4px;
+    display:inline-flex;align-items:center;gap:8px;background:var(--panel-alt);
+    border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:13px;margin:4px;
   }
   .team-chip button{background:none;border:none;color:var(--red-card);font-weight:700;font-size:14px;}
-  .league-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--pitch-line);}
+  .league-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;}
   .match-admin-row{
     display:grid;grid-template-columns:1fr 70px 1fr auto;gap:8px;align-items:center;margin-bottom:8px;
   }
   .match-admin-row select{width:100%;}
   .score-input{width:60px;text-align:center;}
-  .subtle{color:var(--paper-dim);font-size:12px;}
-  footer{text-align:center;padding:30px;color:var(--paper-dim);font-size:12px;}
+  .subtle{color:var(--text-dim);font-size:12px;}
+  footer{text-align:center;padding:30px;color:var(--text-dim);font-size:12px;}
 
   .announcements-board{
-    background:var(--pitch);border:1px solid var(--pitch-line);border-right:4px solid var(--gold);
-    border-radius:10px;padding:18px 20px;margin-bottom:36px;
+    background:var(--panel);border:1px solid var(--border);border-right:4px solid var(--gold);
+    border-radius:10px;padding:18px 20px;margin-bottom:36px;box-shadow:var(--shadow);
   }
-  .announcements-board h2{font-size:18px;margin:0 0 12px;border:none;padding:0;}
+  .announcements-board h2{font-size:18px;margin:0 0 12px;border:none;padding:0;color:var(--brand-dark);}
   .announcement-item{
-    padding:10px 0;border-bottom:1px solid var(--pitch-line);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;
   }
   .announcement-item:last-child{border-bottom:none;}
   .announcement-text{font-size:14px;line-height:1.6;}
-  .announcement-date{font-size:11px;color:var(--paper-dim);font-family:'Space Mono';white-space:nowrap;}
+  .announcement-date{font-size:11px;color:var(--text-dim);font-family:'Space Mono';white-space:nowrap;}
   textarea{
-    background:var(--pitch-dark);border:1px solid var(--pitch-line);color:var(--paper);
+    background:var(--panel);border:1px solid var(--border);color:var(--text);
     padding:12px;border-radius:8px;font-family:'Tajawal';font-size:14px;width:100%;min-height:220px;resize:vertical;
   }
   textarea:focus{outline:none;border-color:var(--gold);}
   .regulations-content{
-    background:var(--pitch);border:1px solid var(--pitch-line);border-radius:12px;padding:26px 30px;
-    white-space:pre-wrap;line-height:1.9;font-size:15px;
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:26px 30px;
+    white-space:pre-wrap;line-height:1.9;font-size:15px;box-shadow:var(--shadow);
   }
+
+  .scorer-row{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;
+  }
+  .scorer-name{font-family:'Cairo';font-weight:600;flex:1;}
+  .scorer-controls{display:flex;align-items:center;gap:6px;}
+  .goal-count{font-family:'Space Mono';font-weight:700;min-width:26px;text-align:center;color:var(--brand-dark);}
+
+  .league-section-title{
+    display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;
+  }
+  .roster-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;}
+  .roster-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);}
+  .roster-card h3{margin:0 0 10px;font-size:15px;color:var(--brand-dark);}
+  .roster-list{list-style:none;padding:0;margin:0;}
+  .roster-list li{padding:6px 0;border-bottom:1px solid var(--border);font-size:14px;display:flex;justify-content:space-between;align-items:center;}
+  .roster-list li:last-child{border-bottom:none;}
 </style>
 </head>
 <body>
@@ -196,13 +217,15 @@
 <header class="topbar">
   <div class="brand">
     <span class="dot"></span>
-    <h1>منصة الدوريات</h1>
+    <h1>اللجنة الرياضية</h1>
   </div>
   <div class="league-tabs" id="leagueTabs"></div>
   <div class="mode-toggle">
     <button id="btnPublic" class="active">العرض العام</button>
-    <button id="btnAdmin">لوحة التحكم</button>
+    <button id="btnStandings">الترتيب</button>
+    <button id="btnLineups">التشكيلات</button>
     <button id="btnRegs">لوائح اللجنة الرياضية</button>
+    <button id="btnAdmin">لوحة التحكم</button>
   </div>
 </header>
 
@@ -214,22 +237,36 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// إعدادات قاعدة البيانات الخاصة بمشروعك
 const firebaseConfig = {
   databaseURL: "https://football-79578-default-rtdb.firebaseio.com"
 };
 
-// تهيئة الاتصال
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getDatabase(firebaseApp);
 const dbRef = ref(db);
 
 window.state = { leagues: [], activeLeagueId: null, announcements: [], regulationsText: '' };
-let mode = 'public'; 
+let mode = 'public'; // public | admin | regulations | standings | lineups
 let adminUnlocked = false;
 const ADMIN_PIN = '12e34e';
 
 function uid(){ return Math.random().toString(36).slice(2,9); }
+
+function ensureShape(){
+  const s = window.state;
+  if(!s.announcements) s.announcements = [];
+  if(typeof s.regulationsText !== 'string') s.regulationsText = '';
+  (s.leagues||[]).forEach(l=>{
+    if(!l.scorers) l.scorers = [];
+    (l.teams||[]).forEach(t=>{ if(!t.players) t.players = []; });
+    (l.matchdays||[]).forEach(md=>{
+      if(typeof md.bestPlayer !== 'string') md.bestPlayer = '';
+      if(typeof md.bestGoalkeeper !== 'string') md.bestGoalkeeper = '';
+      (md.matches||[]).forEach(m=>{ delete m.motm; });
+    });
+  });
+  if(!s.activeLeagueId && s.leagues.length){ s.activeLeagueId = s.leagues[0].id; }
+}
 
 async function loadState(){
   try{
@@ -238,9 +275,7 @@ async function loadState(){
       window.state = snapshot.val();
     }
   }catch(e){ console.log('لا توجد بيانات محفوظة بعد في السحابة', e); }
-  if(!window.state.announcements) window.state.announcements = [];
-  if(typeof window.state.regulationsText !== 'string') window.state.regulationsText = '';
-  if(!window.state.activeLeagueId && window.state.leagues.length){ window.state.activeLeagueId = window.state.leagues[0].id; }
+  ensureShape();
   render();
 }
 
@@ -295,13 +330,17 @@ function fmtDate(m){
 
 function render(){
   renderTabs();
-  document.getElementById('btnPublic').classList.toggle('active', mode==='public');
-  document.getElementById('btnAdmin').classList.toggle('active', mode==='admin');
-  document.getElementById('btnRegs').classList.toggle('active', mode==='regulations');
+  ['btnPublic','btnAdmin','btnRegs','btnStandings','btnLineups'].forEach(id=>{
+    document.getElementById(id).classList.remove('active');
+  });
+  const activeBtnMap = {public:'btnPublic', admin:'btnAdmin', regulations:'btnRegs', standings:'btnStandings', lineups:'btnLineups'};
+  document.getElementById(activeBtnMap[mode]).classList.add('active');
   const app = document.getElementById('app');
   if(mode==='public') app.innerHTML = renderPublic();
   else if(mode==='admin') app.innerHTML = renderAdmin();
-  else app.innerHTML = renderRegulations();
+  else if(mode==='regulations') app.innerHTML = renderRegulations();
+  else if(mode==='standings') app.innerHTML = renderStandingsPage();
+  else app.innerHTML = renderLineupsPage();
   attachHandlers();
 }
 
@@ -340,7 +379,6 @@ function renderPublic(){
         <div class="team-block"><div class="team-name">${teamName(league,live.away)}</div></div>
       </div>
       <div class="meta">${fmtDate(live)}</div>
-      ${live.motm ? `<div class="motm">⭐ أفضل لاعب: ${live.motm}</div>` : ''}
     </div>` : `<div class="board empty">لا توجد مباراة جارية الآن</div>`;
 
   const heroNext = next ? `
@@ -360,12 +398,17 @@ function renderPublic(){
       <td class="team-cell">${r.name}</td>
       <td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td>
       <td>${r.gf}</td><td>${r.ga}</td><td>${r.gf-r.ga}</td>
-      <td class="mono" style="color:var(--gold-bright);font-weight:700">${r.pts}</td>
+      <td class="mono" style="color:var(--gold);font-weight:700">${r.pts}</td>
     </tr>`).join('');
 
   const fixturesHtml = league.matchdays.length ? league.matchdays.map(md=>`
     <div class="matchday">
       <h3>${md.name}</h3>
+      ${(md.bestPlayer || md.bestGoalkeeper) ? `
+        <div class="matchday-honors">
+          ${md.bestPlayer ? `<span>⭐ أفضل لاعب في الجولة: <strong>${md.bestPlayer}</strong></span>` : ''}
+          ${md.bestGoalkeeper ? `<span>🧤 أفضل حارس في الجولة: <strong>${md.bestGoalkeeper}</strong></span>` : ''}
+        </div>` : ''}
       ${md.matches.map(m=>`
         <div class="match-row">
           <div class="side home">${teamName(league,m.home)}</div>
@@ -376,7 +419,6 @@ function renderPublic(){
             <div><span class="status-pill status-${m.status}">${m.status==='finished'?'انتهت':m.status==='live'?'مباشر':'مجدولة'}</span></div>
           </div>
           <div class="side away">${teamName(league,m.away)}</div>
-          ${m.motm ? `<div class="motm-tag">⭐ أفضل لاعب في المباراة: ${m.motm}</div>` : ''}
         </div>
       `).join('')}
     </div>
@@ -420,6 +462,71 @@ function renderRegulations(){
   `;
 }
 
+function renderStandingsPage(){
+  if(!window.state.leagues.length){
+    return `<div class="empty-hint"><h2>لا توجد دوريات بعد</h2></div>`;
+  }
+  return window.state.leagues.map(league=>{
+    const standings = computeStandings(league);
+    const rows = standings.map((r,i)=>`
+      <tr class="${i===0?'rank1':''}">
+        <td>${i+1}</td><td class="team-cell">${r.name}</td>
+        <td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td>
+        <td>${r.gf}</td><td>${r.ga}</td><td>${r.gf-r.ga}</td>
+        <td class="mono" style="color:var(--gold);font-weight:700">${r.pts}</td>
+      </tr>`).join('');
+
+    const scorers = (league.scorers||[]).slice().sort((a,b)=>b.goals-a.goals);
+    const scorersRows = scorers.map((s,i)=>`
+      <tr class="${i===0 && s.goals>0 ?'rank1':''}">
+        <td>${i+1}</td><td class="team-cell">${s.name}</td>
+        <td class="mono" style="font-weight:700;color:var(--gold)">${s.goals}</td>
+      </tr>`).join('');
+
+    return `
+      <section class="block">
+        <h2>ترتيب دوري — ${league.name}</h2>
+        <table>
+          <thead><tr><th>#</th><th style="text-align:right">الفريق</th><th>لعب</th><th>فاز</th><th>تعادل</th><th>خسر</th><th>له</th><th>عليه</th><th>الفرق</th><th>نقاط</th></tr></thead>
+          <tbody>${rows || `<tr><td colspan="10" class="subtle">لا توجد فرق مضافة بعد</td></tr>`}</tbody>
+        </table>
+      </section>
+      <section class="block">
+        <h2>الهدافون — ${league.name}</h2>
+        <table>
+          <thead><tr><th>#</th><th style="text-align:right">اللاعب</th><th>الأهداف</th></tr></thead>
+          <tbody>${scorersRows || `<tr><td colspan="3" class="subtle">لا يوجد هدافون مضافون بعد</td></tr>`}</tbody>
+        </table>
+      </section>
+    `;
+  }).join('<hr style="border:none;border-top:2px solid var(--border);margin:36px 0;">');
+}
+
+function renderLineupsPage(){
+  const league = activeLeague();
+  if(!league){
+    return `<div class="empty-hint"><h2>اختر دورياً من الأعلى لعرض التشكيلات</h2></div>`;
+  }
+  if(!league.teams.length){
+    return `<div class="empty-hint"><h2>لا توجد فرق في هذا الدوري بعد</h2></div>`;
+  }
+  return `
+    <section class="block">
+      <h2>تشكيلات دوري — ${league.name}</h2>
+      <div class="roster-grid">
+        ${league.teams.map(t=>`
+          <div class="roster-card">
+            <h3>${t.name}</h3>
+            <ul class="roster-list">
+              ${(t.players && t.players.length) ? t.players.map(p=>`<li>${p.name}</li>`).join('') : `<li class="subtle">لا يوجد لاعبون مضافون بعد</li>`}
+            </ul>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderAdmin(){
   if(!adminUnlocked){
     return `
@@ -454,6 +561,11 @@ function renderAdmin(){
     const matchdaysHtml = league.matchdays.map(md=>`
       <div class="admin-card">
         <h3>${md.name} <button class="btn danger small" style="float:left" data-delete-matchday="${md.id}">حذف الجدول</button></h3>
+        <div class="row-inline">
+          <input type="text" placeholder="أفضل لاعب في الجولة" value="${md.bestPlayer||''}" data-md-best-player="${md.id}" style="flex:1;min-width:160px;">
+          <input type="text" placeholder="أفضل حارس في الجولة" value="${md.bestGoalkeeper||''}" data-md-best-gk="${md.id}" style="flex:1;min-width:160px;">
+          <button class="btn small" data-save-matchday-honors="${md.id}">حفظ</button>
+        </div>
         ${md.matches.map(m=>`
           <div class="match-admin-row">
             <select disabled>${league.teams.map(t=>`<option ${t.id===m.home?'selected':''}>${t.name}</option>`).join('')}</select>
@@ -472,7 +584,6 @@ function renderAdmin(){
               <option value="live" ${m.status==='live'?'selected':''}>مباشرة الآن</option>
               <option value="finished" ${m.status==='finished'?'selected':''}>انتهت</option>
             </select>
-            <input type="text" data-motm="${m.id}" value="${m.motm||''}" placeholder="أفضل لاعب (اختياري)" style="font-size:12px;flex:1;min-width:140px;">
             <button class="btn small" data-save-match="${m.id}">حفظ</button>
           </div>
         `).join('')}
@@ -480,6 +591,29 @@ function renderAdmin(){
           <select id="newMatchHome_${md.id}"><option value="">الفريق المضيف</option>${teamOptions}</select>
           <select id="newMatchAway_${md.id}"><option value="">الفريق الضيف</option>${teamOptions}</select>
           <button class="btn small" data-add-match="${md.id}">إضافة مباراة</button>
+        </div>
+      </div>
+    `).join('');
+
+    const scorersHtml = (league.scorers||[]).map(s=>`
+      <div class="scorer-row">
+        <span class="scorer-name">${s.name}</span>
+        <div class="scorer-controls">
+          <button class="btn ghost tiny" data-scorer-dec="${s.id}">−</button>
+          <span class="goal-count">${s.goals}</span>
+          <button class="btn ghost tiny" data-scorer-inc="${s.id}">+</button>
+          <button class="btn danger small" data-scorer-delete="${s.id}">حذف</button>
+        </div>
+      </div>
+    `).join('') || `<p class="subtle">لا يوجد هدافون بعد</p>`;
+
+    const rostersHtml = league.teams.map(t=>`
+      <div class="admin-card">
+        <h3>لاعبو فريق "${t.name}"</h3>
+        <div>${(t.players||[]).map(p=>`<span class="team-chip">${p.name} <button data-delete-player="${t.id}|${p.id}">×</button></span>`).join('') || `<span class="subtle">لا يوجد لاعبون بعد</span>`}</div>
+        <div class="row-inline" style="margin-top:12px;">
+          <input type="text" id="newPlayerName_${t.id}" placeholder="اسم اللاعب الجديد">
+          <button class="btn small" data-add-player="${t.id}">إضافة لاعب</button>
         </div>
       </div>
     `).join('');
@@ -495,6 +629,15 @@ function renderAdmin(){
       </div>
 
       <div class="admin-card">
+        <h3>الهدافون — ${league.name}</h3>
+        ${scorersHtml}
+        <div class="row-inline" style="margin-top:14px;">
+          <input type="text" id="newScorerName" placeholder="اسم الهداف الجديد">
+          <button class="btn small" id="addScorerBtn">إضافة هداف</button>
+        </div>
+      </div>
+
+      <div class="admin-card">
         <h3>إنشاء جدول مباريات جديد</h3>
         <div class="row-inline">
           <input type="text" id="newMatchdayName" placeholder="مثال: الجولة 1">
@@ -502,8 +645,11 @@ function renderAdmin(){
         </div>
       </div>
 
-      <h3 style="color:var(--gold);margin-bottom:10px;">جداول المباريات</h3>
+      <h3 style="color:var(--brand-dark);margin-bottom:10px;">جداول المباريات</h3>
       ${matchdaysHtml || `<p class="subtle">لا توجد جداول بعد</p>`}
+
+      <h3 style="color:var(--brand-dark);margin:24px 0 10px;">التشكيلات — إدارة لاعبي الفرق</h3>
+      ${rostersHtml || `<p class="subtle">أضف فرقاً أولاً</p>`}
     `;
   }
 
@@ -548,6 +694,8 @@ function attachHandlers(){
   document.getElementById('btnPublic').onclick = ()=>{ mode='public'; render(); };
   document.getElementById('btnAdmin').onclick = ()=>{ mode='admin'; render(); };
   document.getElementById('btnRegs').onclick = ()=>{ mode='regulations'; render(); };
+  document.getElementById('btnStandings').onclick = ()=>{ mode='standings'; render(); };
+  document.getElementById('btnLineups').onclick = ()=>{ mode='lineups'; render(); };
 
   document.querySelectorAll('[data-league]').forEach(b=>{
     b.onclick = ()=>{ window.state.activeLeagueId = b.dataset.league; render(); };
@@ -591,7 +739,7 @@ function attachHandlers(){
   if(addLeagueBtn) addLeagueBtn.onclick = ()=>{
     const name = document.getElementById('newLeagueName').value.trim();
     if(!name) return;
-    const l = {id:uid(), name, teams:[], matchdays:[]};
+    const l = {id:uid(), name, teams:[], matchdays:[], scorers:[]};
     window.state.leagues.push(l);
     window.state.activeLeagueId = l.id;
     saveState(); render();
@@ -615,7 +763,7 @@ function attachHandlers(){
   if(addTeamBtn) addTeamBtn.onclick = ()=>{
     const name = document.getElementById('newTeamName').value.trim();
     if(!name) return;
-    activeLeague().teams.push({id:uid(), name});
+    activeLeague().teams.push({id:uid(), name, players:[]});
     saveState(); render();
   };
   document.querySelectorAll('[data-delete-team]').forEach(b=>{
@@ -630,13 +778,23 @@ function attachHandlers(){
   if(addMatchdayBtn) addMatchdayBtn.onclick = ()=>{
     const name = document.getElementById('newMatchdayName').value.trim();
     if(!name) return;
-    activeLeague().matchdays.push({id:uid(), name, matches:[]});
+    activeLeague().matchdays.push({id:uid(), name, matches:[], bestPlayer:'', bestGoalkeeper:''});
     saveState(); render();
   };
   document.querySelectorAll('[data-delete-matchday]').forEach(b=>{
     b.onclick = ()=>{
       const league = activeLeague();
       league.matchdays = league.matchdays.filter(md=>md.id!==b.dataset.deleteMatchday);
+      saveState(); render();
+    };
+  });
+  document.querySelectorAll('[data-save-matchday-honors]').forEach(b=>{
+    b.onclick = ()=>{
+      const mdId = b.dataset.saveMatchdayHonors;
+      const league = activeLeague();
+      const md = league.matchdays.find(x=>x.id===mdId);
+      md.bestPlayer = document.querySelector(`[data-md-best-player="${mdId}"]`).value;
+      md.bestGoalkeeper = document.querySelector(`[data-md-best-gk="${mdId}"]`).value;
       saveState(); render();
     };
   });
@@ -649,7 +807,7 @@ function attachHandlers(){
       const home = document.getElementById('newMatchHome_'+mdId).value;
       const away = document.getElementById('newMatchAway_'+mdId).value;
       if(!home || !away || home===away){ alert('اختر فريقين مختلفين'); return; }
-      md.matches.push({id:uid(), home, away, homeScore:null, awayScore:null, status:'scheduled', date:'', time:'', motm:''});
+      md.matches.push({id:uid(), home, away, homeScore:null, awayScore:null, status:'scheduled', date:'', time:''});
       saveState(); render();
     };
   });
@@ -674,7 +832,59 @@ function attachHandlers(){
       match.date = document.querySelector(`[data-date="${mId}"]`).value;
       match.time = document.querySelector(`[data-time="${mId}"]`).value;
       match.status = document.querySelector(`[data-status="${mId}"]`).value;
-      match.motm = document.querySelector(`[data-motm="${mId}"]`).value;
+      saveState(); render();
+    };
+  });
+
+  const addScorerBtn = document.getElementById('addScorerBtn');
+  if(addScorerBtn) addScorerBtn.onclick = ()=>{
+    const name = document.getElementById('newScorerName').value.trim();
+    if(!name) return;
+    activeLeague().scorers.push({id:uid(), name, goals:0});
+    saveState(); render();
+  };
+  document.querySelectorAll('[data-scorer-delete]').forEach(b=>{
+    b.onclick = ()=>{
+      const league = activeLeague();
+      league.scorers = league.scorers.filter(s=>s.id!==b.dataset.scorerDelete);
+      saveState(); render();
+    };
+  });
+  document.querySelectorAll('[data-scorer-inc]').forEach(b=>{
+    b.onclick = ()=>{
+      const league = activeLeague();
+      const s = league.scorers.find(x=>x.id===b.dataset.scorerInc);
+      s.goals++;
+      saveState(); render();
+    };
+  });
+  document.querySelectorAll('[data-scorer-dec]').forEach(b=>{
+    b.onclick = ()=>{
+      const league = activeLeague();
+      const s = league.scorers.find(x=>x.id===b.dataset.scorerDec);
+      s.goals = Math.max(0, s.goals-1);
+      saveState(); render();
+    };
+  });
+
+  document.querySelectorAll('[data-add-player]').forEach(b=>{
+    b.onclick = ()=>{
+      const teamId = b.dataset.addPlayer;
+      const league = activeLeague();
+      const team = league.teams.find(t=>t.id===teamId);
+      const input = document.getElementById('newPlayerName_'+teamId);
+      const name = input.value.trim();
+      if(!name) return;
+      team.players.push({id:uid(), name});
+      saveState(); render();
+    };
+  });
+  document.querySelectorAll('[data-delete-player]').forEach(b=>{
+    b.onclick = ()=>{
+      const [teamId, playerId] = b.dataset.deletePlayer.split('|');
+      const league = activeLeague();
+      const team = league.teams.find(t=>t.id===teamId);
+      team.players = team.players.filter(p=>p.id!==playerId);
       saveState(); render();
     };
   });
