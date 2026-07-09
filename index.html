@@ -229,14 +229,23 @@
     }
     .league-tab{flex:0 0 auto;}
     .mode-toggle{
-      flex-wrap:wrap;
-      justify-content:center;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:6px;
+      background:var(--panel-alt);
+      border:1px solid var(--border);
+      border-radius:12px;
       padding:6px;
+      width:100%;
     }
     .mode-toggle button{
-      flex:1 1 calc(50% - 6px);
-      padding:11px 8px;
+      width:100%;
+      border-radius:8px;
+      padding:12px 6px;
       font-size:13px;
+    }
+    .mode-toggle button:last-child{
+      grid-column:1 / -1;
     }
 
     main{padding:16px;}
