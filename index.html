@@ -213,6 +213,25 @@
   .roster-list li{padding:6px 0;border-bottom:1px solid var(--border);font-size:14px;display:flex;justify-content:space-between;align-items:center;}
   .roster-list li:last-child{border-bottom:none;}
 
+  .pitch-wrap{
+    position:relative;width:100%;max-width:300px;aspect-ratio:2/3;
+    margin:0 auto 16px;border-radius:12px;overflow:hidden;
+    box-shadow:var(--shadow);border:1px solid var(--border);
+  }
+  .player-tag{
+    position:absolute;transform:translate(-50%,-50%);
+    background:var(--panel);border:1px solid var(--border);border-radius:7px;
+    padding:3px 7px;font-size:10.5px;font-weight:700;font-family:'Cairo';
+    color:var(--brand-dark);white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.2);
+    text-align:center;max-width:90px;overflow:hidden;text-overflow:ellipsis;
+  }
+  .player-tag.empty{color:var(--text-dim);font-weight:500;background:rgba(255,255,255,0.65);font-size:9.5px;}
+
+  .lineup-admin-card select{max-width:180px;}
+  .slot-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+  .slot-row:last-child{border-bottom:none;}
+  .slot-label{font-size:13px;color:var(--text-dim);min-width:110px;}
+
   /* ===== Mobile fixes ===== */
   @media (max-width:640px){
     header.topbar{
@@ -375,6 +394,32 @@ const ADMIN_PIN = '12e34e';
 
 function uid(){ return Math.random().toString(36).slice(2,9); }
 
+const FORMATIONS = {
+  '6': [
+    {id:'GK', label:'حارس', x:50, y:90},
+    {id:'DF1', label:'مدافع', x:28, y:68}, {id:'DF2', label:'مدافع', x:72, y:68},
+    {id:'MF1', label:'وسط', x:28, y:42}, {id:'MF2', label:'وسط', x:72, y:42},
+    {id:'FW', label:'مهاجم', x:50, y:16}
+  ],
+  '7': [
+    {id:'GK', label:'حارس', x:50, y:90},
+    {id:'DF1', label:'مدافع', x:28, y:70}, {id:'DF2', label:'مدافع', x:72, y:70},
+    {id:'MF1', label:'وسط', x:18, y:44}, {id:'MF2', label:'وسط', x:50, y:48}, {id:'MF3', label:'وسط', x:82, y:44},
+    {id:'FW', label:'مهاجم', x:50, y:14}
+  ]
+};
+
+function pitchSvgBg(){
+  return `<svg viewBox="0 0 100 150" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;">
+    <rect width="100" height="150" fill="#2f6b46"/>
+    <rect x="2" y="2" width="96" height="146" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="0.6"/>
+    <line x1="2" y1="75" x2="98" y2="75" stroke="#ffffff" stroke-opacity="0.55" stroke-width="0.6"/>
+    <circle cx="50" cy="75" r="11" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="0.6"/>
+    <rect x="27" y="2" width="46" height="18" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="0.6"/>
+    <rect x="27" y="130" width="46" height="18" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="0.6"/>
+  </svg>`;
+}
+
 function asArray(v){
   if(Array.isArray(v)) return v;
   if(v && typeof v === 'object') return Object.values(v);
@@ -391,7 +436,11 @@ function ensureShape(){
     l.teams = asArray(l.teams);
     l.matchdays = asArray(l.matchdays);
     l.scorers = asArray(l.scorers);
-    l.teams.forEach(t=>{ t.players = asArray(t.players); });
+    l.teams.forEach(t=>{
+      t.players = asArray(t.players);
+      if(typeof t.formation !== 'string' || !FORMATIONS[t.formation]) t.formation = '6';
+      if(!t.lineup || typeof t.lineup !== 'object' || Array.isArray(t.lineup)) t.lineup = {};
+    });
     l.matchdays.forEach(md=>{
       md.matches = asArray(md.matches);
       if(typeof md.bestPlayer !== 'string') md.bestPlayer = '';
@@ -645,14 +694,27 @@ function renderLineupsPage(){
     <section class="block">
       <h2>تشكيلات دوري — ${league.name}</h2>
       <div class="roster-grid">
-        ${league.teams.map(t=>`
-          <div class="roster-card">
-            <h3>${t.name}</h3>
-            <ul class="roster-list">
-              ${(t.players && t.players.length) ? t.players.map(p=>`<li>${p.name}</li>`).join('') : `<li class="subtle">لا يوجد لاعبون مضافون بعد</li>`}
-            </ul>
-          </div>
-        `).join('')}
+        ${league.teams.map(t=>{
+          const slots = FORMATIONS[t.formation] || FORMATIONS['6'];
+          const tags = slots.map(slot=>{
+            const playerId = t.lineup[slot.id];
+            const player = (t.players||[]).find(p=>p.id===playerId);
+            const name = player ? player.name : slot.label;
+            return `<div class="player-tag ${player?'':'empty'}" style="left:${slot.x}%;top:${slot.y}%;">${name}</div>`;
+          }).join('');
+          return `
+            <div class="roster-card">
+              <h3>${t.name} <span class="subtle">(${t.formation} لاعبين)</span></h3>
+              <div class="pitch-wrap">
+                ${pitchSvgBg()}
+                ${tags}
+              </div>
+              <ul class="roster-list">
+                ${(t.players && t.players.length) ? t.players.map(p=>`<li>${p.name}</li>`).join('') : `<li class="subtle">لا يوجد لاعبون مضافون بعد</li>`}
+              </ul>
+            </div>
+          `;
+        }).join('')}
       </div>
     </section>
   `;
@@ -738,16 +800,36 @@ function renderAdmin(){
       </div>
     `).join('') || `<p class="subtle">لا يوجد هدافون بعد</p>`;
 
-    const rostersHtml = league.teams.map(t=>`
-      <div class="admin-card">
+    const rostersHtml = league.teams.map(t=>{
+      const slots = FORMATIONS[t.formation] || FORMATIONS['6'];
+      const slotRows = slots.map(slot=>`
+        <div class="slot-row">
+          <span class="slot-label">${slot.label}</span>
+          <select data-slot-assign="${t.id}|${slot.id}">
+            <option value="">— بدون —</option>
+            ${(t.players||[]).map(p=>`<option value="${p.id}" ${t.lineup[slot.id]===p.id?'selected':''}>${p.name}</option>`).join('')}
+          </select>
+        </div>
+      `).join('');
+      return `
+      <div class="admin-card lineup-admin-card">
         <h3>لاعبو فريق "${t.name}"</h3>
         <div>${(t.players||[]).map(p=>`<span class="team-chip">${p.name} <button data-delete-player="${t.id}|${p.id}">×</button></span>`).join('') || `<span class="subtle">لا يوجد لاعبون بعد</span>`}</div>
         <div class="row-inline" style="margin-top:12px;">
           <input type="text" id="newPlayerName_${t.id}" placeholder="اسم اللاعب الجديد">
           <button class="btn small" data-add-player="${t.id}">إضافة لاعب</button>
         </div>
+        <div class="row-inline" style="margin-top:16px;">
+          <span class="slot-label">عدد لاعبي الفريق:</span>
+          <select data-formation-team="${t.id}">
+            <option value="6" ${t.formation==='6'?'selected':''}>6 لاعبين (مع الحارس)</option>
+            <option value="7" ${t.formation==='7'?'selected':''}>7 لاعبين (مع الحارس)</option>
+          </select>
+        </div>
+        ${slotRows}
       </div>
-    `).join('');
+    `;
+    }).join('');
 
     leagueManagement = `
       <div class="admin-card">
@@ -998,6 +1080,27 @@ function attachHandlers(){
     };
   });
 
+  document.querySelectorAll('[data-formation-team]').forEach(sel=>{
+    sel.onchange = ()=>{
+      const teamId = sel.dataset.formationTeam;
+      const league = activeLeague();
+      const team = league.teams.find(t=>t.id===teamId);
+      team.formation = sel.value;
+      team.lineup = {};
+      saveState(); render();
+    };
+  });
+  document.querySelectorAll('[data-slot-assign]').forEach(sel=>{
+    sel.onchange = ()=>{
+      const [teamId, slotId] = sel.dataset.slotAssign.split('|');
+      const league = activeLeague();
+      const team = league.teams.find(t=>t.id===teamId);
+      if(sel.value) team.lineup[slotId] = sel.value;
+      else delete team.lineup[slotId];
+      saveState(); render();
+    };
+  });
+
   document.querySelectorAll('[data-add-player]').forEach(b=>{
     b.onclick = ()=>{
       const teamId = b.dataset.addPlayer;
@@ -1016,6 +1119,9 @@ function attachHandlers(){
       const league = activeLeague();
       const team = league.teams.find(t=>t.id===teamId);
       team.players = team.players.filter(p=>p.id!==playerId);
+      Object.keys(team.lineup).forEach(slotId=>{
+        if(team.lineup[slotId] === playerId) delete team.lineup[slotId];
+      });
       saveState(); render();
     };
   });
