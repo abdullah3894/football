@@ -106,6 +106,8 @@
   section.block{margin-bottom:40px;}
   section.block h2{font-size:20px;border-right:4px solid var(--gold);padding-right:12px;margin-bottom:16px;color:var(--brand-dark);}
   table{width:100%;border-collapse:collapse;background:var(--panel);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);}
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;}
+  .table-scroll table{border-radius:0;}
   th,td{padding:10px 12px;text-align:center;font-size:14px;}
   th{background:var(--brand-dark);color:#fff;font-family:'Cairo';font-weight:700;font-size:13px;}
   td.team-cell{text-align:right;font-family:'Cairo';font-weight:600;}
@@ -309,6 +311,18 @@
     .match-row .side.home{text-align:center;}
     .match-row .side.away{text-align:center;}
     .match-row{flex-direction:column;text-align:center;}
+
+    .table-scroll{
+      margin:0 -4px;
+      padding:0 4px;
+      box-shadow:var(--shadow);
+      border-radius:10px;
+    }
+    .table-scroll table{
+      min-width:480px;
+      box-shadow:none;
+    }
+    th,td{padding:8px 8px;font-size:12.5px;}
   }
 </style>
 </head>
@@ -550,13 +564,6 @@ function renderPublic(){
     <div class="hero">${heroLive}${heroNext}</div>
     ${announcementsHtml}
     <section class="block">
-      <h2>ترتيب الدوري — ${league.name}</h2>
-      <table>
-        <thead><tr><th>#</th><th style="text-align:right">الفريق</th><th>لعب</th><th>فاز</th><th>تعادل</th><th>خسر</th><th>له</th><th>عليه</th><th>الفرق</th><th>نقاط</th></tr></thead>
-        <tbody>${standingsRows || `<tr><td colspan="10" class="subtle">لا توجد فرق مضافة بعد</td></tr>`}</tbody>
-      </table>
-    </section>
-    <section class="block">
       <h2>جدول المباريات والنتائج</h2>
       ${fixturesHtml}
     </section>
@@ -597,17 +604,21 @@ function renderStandingsPage(){
     return `
       <section class="block">
         <h2>ترتيب دوري — ${league.name}</h2>
-        <table>
-          <thead><tr><th>#</th><th style="text-align:right">الفريق</th><th>لعب</th><th>فاز</th><th>تعادل</th><th>خسر</th><th>له</th><th>عليه</th><th>الفرق</th><th>نقاط</th></tr></thead>
-          <tbody>${rows || `<tr><td colspan="10" class="subtle">لا توجد فرق مضافة بعد</td></tr>`}</tbody>
-        </table>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>#</th><th style="text-align:right">الفريق</th><th>لعب</th><th>فاز</th><th>تعادل</th><th>خسر</th><th>له</th><th>عليه</th><th>الفرق</th><th>نقاط</th></tr></thead>
+            <tbody>${rows || `<tr><td colspan="10" class="subtle">لا توجد فرق مضافة بعد</td></tr>`}</tbody>
+          </table>
+        </div>
       </section>
       <section class="block">
         <h2>الهدافون — ${league.name}</h2>
-        <table>
-          <thead><tr><th>#</th><th style="text-align:right">اللاعب</th><th>الأهداف</th></tr></thead>
-          <tbody>${scorersRows || `<tr><td colspan="3" class="subtle">لا يوجد هدافون مضافون بعد</td></tr>`}</tbody>
-        </table>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>#</th><th style="text-align:right">اللاعب</th><th>الأهداف</th></tr></thead>
+            <tbody>${scorersRows || `<tr><td colspan="3" class="subtle">لا يوجد هدافون مضافون بعد</td></tr>`}</tbody>
+          </table>
+        </div>
       </section>
     `;
   }).join('<hr style="border:none;border-top:2px solid var(--border);margin:36px 0;">');
