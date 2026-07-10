@@ -4,6 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>المحطة الرياضية</title>
+<meta name="description" content="تابع نتائج المباريات، الترتيب، الهدافين، والتشكيلات لحظة بلحظة عبر المحطة الرياضية">
+
+<!-- Open Graph / WhatsApp / Facebook preview -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="المحطة الرياضية">
+<meta property="og:description" content="تابع نتائج المباريات، الترتيب، الهدافين، والتشكيلات لحظة بلحظة">
+<meta property="og:image" content="og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="ar_AR">
+
+<!-- Twitter Card preview -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="المحطة الرياضية">
+<meta name="twitter:description" content="تابع نتائج المباريات، الترتيب، الهدافين، والتشكيلات لحظة بلحظة">
+<meta name="twitter:image" content="og-image.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -216,6 +233,36 @@
   .roster-list li{padding:6px 0;border-bottom:1px solid var(--border);font-size:14px;display:flex;justify-content:space-between;align-items:center;}
   .roster-list li:last-child{border-bottom:none;}
 
+  .loading-screen{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:100px 20px;gap:18px;color:var(--text-dim);font-size:15px;
+  }
+  .spinner{
+    width:46px;height:46px;border:4px solid var(--border);border-top-color:var(--gold);
+    border-radius:50%;animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .acc-card{
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden;
+  }
+  .acc-card summary{
+    cursor:pointer;padding:16px 20px;font-family:'Cairo';font-weight:700;font-size:16px;
+    color:var(--brand-dark);display:flex;align-items:center;justify-content:space-between;
+    list-style:none;user-select:none;
+  }
+  .acc-card summary::-webkit-details-marker{display:none;}
+  .acc-card summary::marker{content:'';}
+  .acc-card summary:hover{background:var(--panel-alt);}
+  .acc-chevron{color:var(--gold);font-size:20px;transition:transform .2s ease;flex-shrink:0;margin-right:8px;}
+  .acc-card[open] > summary .acc-chevron{transform:rotate(90deg);}
+  .acc-card .acc-body{padding:4px 20px 20px;border-top:1px solid var(--border);padding-top:16px;}
+  .acc-card.acc-nested{background:var(--panel-alt);margin-bottom:12px;}
+  .acc-card.acc-nested summary{font-size:14.5px;padding:12px 16px;}
+  .acc-card.acc-nested .acc-body{padding:4px 16px 16px;padding-top:12px;}
+  .acc-card.acc-nested:hover summary{background:rgba(185,134,43,0.08);}
+
   .pitch-wrap{
     position:relative;width:100%;max-width:300px;aspect-ratio:2/3;
     margin:0 auto 16px;border-radius:12px;overflow:hidden;
@@ -374,7 +421,12 @@
   </div>
 </header>
 
-<main id="app"></main>
+<main id="app">
+  <div class="loading-screen">
+    <div class="spinner"></div>
+    <p>جاري تحميل البيانات...</p>
+  </div>
+</main>
 
 <footer>منصة إدارة دوريات كرة القدم — البيانات محفوظة ومشتركة بين الزوار</footer>
 
@@ -396,6 +448,17 @@ let adminUnlocked = false;
 const ADMIN_PIN_HASH = 'facb188ccdd9e9927d47baae78343295e04e54337b5bf9cb8e475fa7761d3168';
 let failedPinAttempts = 0;
 let lockoutUntil = 0;
+let adminSections = {}; // tracks open/closed state of admin panel accordion sections across re-renders
+
+function acc(key, title, bodyHtml, defaultOpen=false, nested=false){
+  const isOpen = adminSections.hasOwnProperty(key) ? adminSections[key] : defaultOpen;
+  return `
+    <details class="acc-card${nested?' acc-nested':''}" data-acc="${key}" ${isOpen?'open':''}>
+      <summary><span>${title}</span><span class="acc-chevron">›</span></summary>
+      <div class="acc-body">${bodyHtml}</div>
+    </details>
+  `;
+}
 
 async function sha256Hex(text){
   const enc = new TextEncoder().encode(text);
@@ -977,6 +1040,14 @@ function renderAdmin(){
     </div>
   `).join('') || `<p class="subtle">لا توجد دوريات بعد</p>`;
 
+  const leaguesSectionBody = `
+    ${leaguesListHtml}
+    <div class="row-inline" style="margin-top:14px;">
+      <input type="text" id="newLeagueName" placeholder="اسم الدوري الجديد">
+      <button class="btn small" id="addLeagueBtn">إنشاء دوري</button>
+    </div>
+  `;
+
   let leagueManagement = '';
   if(league){
     const teamsHtml = league.teams.map(t=>`
@@ -985,9 +1056,39 @@ function renderAdmin(){
 
     const teamOptions = league.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
 
-    const matchdaysHtml = league.matchdays.map(md=>`
-      <div class="admin-card">
-        <h3>${md.name} <button class="btn danger small" style="float:left" data-delete-matchday="${md.id}">حذف الجدول</button></h3>
+    const teamsSectionBody = `
+      <div>${teamsHtml}</div>
+      <div class="row-inline" style="margin-top:12px;">
+        <input type="text" id="newTeamName" placeholder="اسم الفريق الجديد">
+        <button class="btn small" id="addTeamBtn">إضافة فريق</button>
+      </div>
+    `;
+
+    const scorersHtml = (league.scorers||[]).map(s=>`
+      <div class="scorer-row">
+        <span class="scorer-name">${s.name}</span>
+        <div class="scorer-controls">
+          <button class="btn ghost tiny" data-scorer-dec="${s.id}">−</button>
+          <span class="goal-count">${s.goals}</span>
+          <button class="btn ghost tiny" data-scorer-inc="${s.id}">+</button>
+          <button class="btn danger small" data-scorer-delete="${s.id}">حذف</button>
+        </div>
+      </div>
+    `).join('') || `<p class="subtle">لا يوجد هدافون بعد</p>`;
+
+    const scorersSectionBody = `
+      ${scorersHtml}
+      <div class="row-inline" style="margin-top:14px;">
+        <input type="text" id="newScorerName" placeholder="اسم الهداف الجديد">
+        <button class="btn small" id="addScorerBtn">إضافة هداف</button>
+      </div>
+    `;
+
+    const matchdayCards = league.matchdays.map(md=>{
+      const body = `
+        <div class="row-inline">
+          <button class="btn danger small" data-delete-matchday="${md.id}">حذف هذا الجدول</button>
+        </div>
         <div class="row-inline">
           <input type="text" placeholder="أفضل لاعب في الجولة" value="${md.bestPlayer||''}" data-md-best-player="${md.id}" style="flex:1;min-width:160px;">
           <input type="text" placeholder="أفضل حارس في الجولة" value="${md.bestGoalkeeper||''}" data-md-best-gk="${md.id}" style="flex:1;min-width:160px;">
@@ -1041,22 +1142,21 @@ function renderAdmin(){
           <select id="newMatchAway_${md.id}"><option value="">الفريق الضيف</option>${teamOptions}</select>
           <button class="btn small" data-add-match="${md.id}">إضافة مباراة</button>
         </div>
-      </div>
-    `).join('');
+      `;
+      return acc('matchday_'+md.id, `📅 ${md.name}`, body, false, true);
+    }).join('');
 
-    const scorersHtml = (league.scorers||[]).map(s=>`
-      <div class="scorer-row">
-        <span class="scorer-name">${s.name}</span>
-        <div class="scorer-controls">
-          <button class="btn ghost tiny" data-scorer-dec="${s.id}">−</button>
-          <span class="goal-count">${s.goals}</span>
-          <button class="btn ghost tiny" data-scorer-inc="${s.id}">+</button>
-          <button class="btn danger small" data-scorer-delete="${s.id}">حذف</button>
-        </div>
+    const matchdaysSectionBody = `
+      <div class="row-inline">
+        <input type="text" id="newMatchdayName" placeholder="مثال: الجولة 1">
+        <button class="btn small" id="addMatchdayBtn">إنشاء جدول جديد</button>
       </div>
-    `).join('') || `<p class="subtle">لا يوجد هدافون بعد</p>`;
+      <div style="margin-top:14px;">
+        ${matchdayCards || `<p class="subtle">لا توجد جداول بعد</p>`}
+      </div>
+    `;
 
-    const rostersHtml = league.teams.map(t=>{
+    const rosterCards = league.teams.map(t=>{
       const slots = FORMATIONS[t.formation] || FORMATIONS['6'];
       const slotRows = slots.map(slot=>`
         <div class="slot-row">
@@ -1067,9 +1167,7 @@ function renderAdmin(){
           </select>
         </div>
       `).join('');
-      return `
-      <div class="admin-card lineup-admin-card">
-        <h3>لاعبو فريق "${t.name}"</h3>
+      const body = `
         <div>${(t.players||[]).map(p=>`<span class="team-chip">${p.name} <button data-delete-player="${t.id}|${p.id}">×</button></span>`).join('') || `<span class="subtle">لا يوجد لاعبون بعد</span>`}</div>
         <div class="row-inline" style="margin-top:12px;">
           <input type="text" id="newPlayerName_${t.id}" placeholder="اسم اللاعب الجديد">
@@ -1083,43 +1181,17 @@ function renderAdmin(){
           </select>
         </div>
         ${slotRows}
-      </div>
-    `;
+      `;
+      return acc('roster_'+t.id, `👕 ${t.name}`, body, false, true);
     }).join('');
 
-    leagueManagement = `
-      <div class="admin-card">
-        <h3>فرق دوري "${league.name}"</h3>
-        <div>${teamsHtml}</div>
-        <div class="row-inline" style="margin-top:12px;">
-          <input type="text" id="newTeamName" placeholder="اسم الفريق الجديد">
-          <button class="btn small" id="addTeamBtn">إضافة فريق</button>
-        </div>
-      </div>
+    const rostersSectionBody = rosterCards || `<p class="subtle">أضف فرقاً أولاً</p>`;
 
-      <div class="admin-card">
-        <h3>الهدافون — ${league.name}</h3>
-        ${scorersHtml}
-        <div class="row-inline" style="margin-top:14px;">
-          <input type="text" id="newScorerName" placeholder="اسم الهداف الجديد">
-          <button class="btn small" id="addScorerBtn">إضافة هداف</button>
-        </div>
-      </div>
-
-      <div class="admin-card">
-        <h3>إنشاء جدول مباريات جديد</h3>
-        <div class="row-inline">
-          <input type="text" id="newMatchdayName" placeholder="مثال: الجولة 1">
-          <button class="btn small" id="addMatchdayBtn">إنشاء الجدول</button>
-        </div>
-      </div>
-
-      <h3 style="color:var(--brand-dark);margin-bottom:10px;">جداول المباريات</h3>
-      ${matchdaysHtml || `<p class="subtle">لا توجد جداول بعد</p>`}
-
-      <h3 style="color:var(--brand-dark);margin:24px 0 10px;">التشكيلات — إدارة لاعبي الفرق</h3>
-      ${rostersHtml || `<p class="subtle">أضف فرقاً أولاً</p>`}
-    `;
+    leagueManagement =
+      acc('teams', `فرق دوري "${league.name}"`, teamsSectionBody, false) +
+      acc('scorers', `الهدافون — ${league.name}`, scorersSectionBody, true) +
+      acc('matchdays', 'جداول المباريات', matchdaysSectionBody, true) +
+      acc('rosters', 'التشكيلات — إدارة لاعبي الفرق', rostersSectionBody, false);
   }
 
   const announcementsAdminHtml = window.state.announcements.slice().reverse().map(a=>`
@@ -1129,33 +1201,36 @@ function renderAdmin(){
     </div>
   `).join('') || `<p class="subtle">لا توجد تصاريح بعد</p>`;
 
+  const announcementsSectionBody = `
+    ${announcementsAdminHtml}
+    <div class="row-inline" style="margin-top:14px;">
+      <input type="text" id="newAnnouncementText" placeholder="نص التصريح" style="flex:1;min-width:200px;">
+      <button class="btn small" id="addAnnouncementBtn">نشر التصريح</button>
+    </div>
+  `;
+
+  const regulationsSectionBody = `
+    <textarea id="regulationsTextArea" placeholder="اكتب لوائح اللجنة الرياضية هنا...">${window.state.regulationsText}</textarea>
+    <div class="row-inline" style="margin-top:10px;">
+      <button class="btn small" id="saveRegulationsBtn">حفظ اللوائح</button>
+    </div>
+  `;
+
+  const backupSectionBody = `
+    <p class="subtle">يُنصح بتنزيل نسخة احتياطية بشكل دوري، خصوصاً قبل أي تعديل كبير.</p>
+    <div class="row-inline">
+      <button class="btn small" id="exportBackupBtn">📥 تنزيل نسخة احتياطية</button>
+      <button class="btn ghost small" id="importBackupBtn">📤 استعادة من نسخة احتياطية</button>
+      <input type="file" id="importBackupFile" accept="application/json" style="display:none;">
+    </div>
+  `;
+
   return `
-    <div class="admin-card">
-      <h3>التصاريح</h3>
-      ${announcementsAdminHtml}
-      <div class="row-inline" style="margin-top:14px;">
-        <input type="text" id="newAnnouncementText" placeholder="نص التصريح" style="flex:1;min-width:200px;">
-        <button class="btn small" id="addAnnouncementBtn">نشر التصريح</button>
-      </div>
-    </div>
-
-    <div class="admin-card">
-      <h3>لوائح اللجنة الرياضية</h3>
-      <textarea id="regulationsTextArea" placeholder="اكتب لوائح اللجنة الرياضية هنا...">${window.state.regulationsText}</textarea>
-      <div class="row-inline" style="margin-top:10px;">
-        <button class="btn small" id="saveRegulationsBtn">حفظ اللوائح</button>
-      </div>
-    </div>
-
-    <div class="admin-card">
-      <h3>إدارة الدوريات</h3>
-      ${leaguesListHtml}
-      <div class="row-inline" style="margin-top:14px;">
-        <input type="text" id="newLeagueName" placeholder="اسم الدوري الجديد">
-        <button class="btn small" id="addLeagueBtn">إنشاء دوري</button>
-      </div>
-    </div>
+    ${acc('leagues', 'إدارة الدوريات', leaguesSectionBody, false)}
     ${league ? leagueManagement : `<p class="subtle">أنشئ دورياً أولاً للبدء بإضافة الفرق والمباريات.</p>`}
+    ${acc('announcements', 'التصاريح', announcementsSectionBody, false)}
+    ${acc('regulations', 'لوائح اللجنة الرياضية', regulationsSectionBody, false)}
+    ${acc('backup', '💾 النسخ الاحتياطي للبيانات', backupSectionBody, false)}
   `;
 }
 
@@ -1226,6 +1301,47 @@ function attachHandlers(){
     });
   }
   if(mode!=='admin') return;
+
+  document.querySelectorAll('[data-acc]').forEach(det=>{
+    det.addEventListener('toggle', ()=>{ adminSections[det.dataset.acc] = det.open; });
+  });
+
+  const exportBackupBtn = document.getElementById('exportBackupBtn');
+  if(exportBackupBtn) exportBackupBtn.onclick = ()=>{
+    const dataStr = JSON.stringify(window.state, null, 2);
+    const blob = new Blob([dataStr], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = `نسخة-احتياطية-المحطة-الرياضية-${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const importBackupBtn = document.getElementById('importBackupBtn');
+  const importBackupFile = document.getElementById('importBackupFile');
+  if(importBackupBtn) importBackupBtn.onclick = ()=>{ importBackupFile.click(); };
+  if(importBackupFile) importBackupFile.onchange = ()=>{
+    const file = importBackupFile.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      let parsed;
+      try{ parsed = JSON.parse(reader.result); }
+      catch(e){ alert('الملف غير صالح، تأكد أنه ملف نسخة احتياطية صحيح (JSON)'); return; }
+      if(!confirm('سيتم استبدال كل البيانات الحالية (الدوريات، الفرق، النتائج...) بمحتوى هذا الملف. هل أنت متأكد؟')) return;
+      window.state = parsed;
+      ensureShape();
+      saveState();
+      render();
+      alert('تمت الاستعادة بنجاح');
+    };
+    reader.readAsText(file);
+    importBackupFile.value = '';
+  };
 
   const addAnnouncementBtn = document.getElementById('addAnnouncementBtn');
   if(addAnnouncementBtn) addAnnouncementBtn.onclick = ()=>{
