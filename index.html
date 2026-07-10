@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>اللجنة الرياضية</title>
+<title>المحطة الرياضية</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -136,6 +136,9 @@
   .status-scheduled{background:var(--panel-alt);color:var(--text-dim);}
   .status-live{background:var(--red-card);color:#fff;}
   .status-finished{background:var(--gold-soft);color:var(--gold);}
+
+  .match-cards{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:-4px 0 10px;}
+  .card-badge{background:var(--panel-alt);border:1px solid var(--border);border-radius:6px;padding:2px 9px;font-size:12px;font-family:'Tajawal';}
 
   /* Buttons/forms */
   button{cursor:pointer;font-family:'Tajawal';}
@@ -359,7 +362,7 @@
 <header class="topbar">
   <div class="brand">
     <span class="dot"></span>
-    <h1>اللجنة الرياضية</h1>
+    <h1>المحطة الرياضية</h1>
   </div>
   <div class="league-tabs" id="leagueTabs"></div>
   <div class="mode-toggle">
@@ -390,7 +393,15 @@ const dbRef = ref(db);
 window.state = { leagues: [], activeLeagueId: null, announcements: [], regulationsText: '' };
 let mode = 'public'; // public | admin | regulations | standings | lineups
 let adminUnlocked = false;
-const ADMIN_PIN = '12e34e';
+const ADMIN_PIN_HASH = 'facb188ccdd9e9927d47baae78343295e04e54337b5bf9cb8e475fa7761d3168';
+let failedPinAttempts = 0;
+let lockoutUntil = 0;
+
+async function sha256Hex(text){
+  const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
 
 function uid(){ return Math.random().toString(36).slice(2,9); }
 
@@ -445,7 +456,7 @@ function ensureShape(){
       md.matches = asArray(md.matches);
       if(typeof md.bestPlayer !== 'string') md.bestPlayer = '';
       if(typeof md.bestGoalkeeper !== 'string') md.bestGoalkeeper = '';
-      md.matches.forEach(m=>{ delete m.motm; });
+      md.matches.forEach(m=>{ delete m.motm; m.cards = asArray(m.cards); });
     });
   });
   if(!s.activeLeagueId && s.leagues.length){ s.activeLeagueId = s.leagues[0].id; }
@@ -474,6 +485,18 @@ function activeLeague(){
 function teamName(league, teamId){
   const t = league.teams.find(t=>t.id===teamId);
   return t ? t.name : '—';
+}
+
+function tallyHonors(league){
+  const players = {}, keepers = {};
+  (league.matchdays||[]).forEach(md=>{
+    const p = (md.bestPlayer||'').trim();
+    const g = (md.bestGoalkeeper||'').trim();
+    if(p) players[p] = (players[p]||0) + 1;
+    if(g) keepers[g] = (keepers[g]||0) + 1;
+  });
+  const toSorted = obj => Object.entries(obj).map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count);
+  return { players: toSorted(players), keepers: toSorted(keepers) };
 }
 
 function computeStandings(league){
@@ -603,7 +626,15 @@ function renderPublic(){
           </div>
           <div class="side away">${teamName(league,m.away)}</div>
         </div>
+        ${(m.cards && m.cards.length) ? `
+          <div class="match-cards">
+            ${m.cards.map(c=>`<span class="card-badge">${c.type==='red'?'🟥':'🟨'} ${c.name}</span>`).join('')}
+          </div>` : ''}
       `).join('')}
+      ${md.matches.length ? `
+        <div style="text-align:center;margin:14px 0 6px;">
+          <button class="btn ghost small" data-share-matchday="${md.id}">📤 مشاركة صورة الجولة</button>
+        </div>` : ''}
     </div>
   `).join('') : `<p class="subtle">لا توجد جداول مباريات بعد.</p>`;
 
@@ -659,6 +690,18 @@ function renderStandingsPage(){
         <td class="mono" style="font-weight:700;color:var(--gold)">${s.goals}</td>
       </tr>`).join('');
 
+    const honors = tallyHonors(league);
+    const playerHonorRows = honors.players.map((h,i)=>`
+      <tr class="${i===0?'rank1':''}">
+        <td>${i+1}</td><td class="team-cell">${h.name}</td>
+        <td class="mono" style="font-weight:700;color:var(--gold)">${h.count}</td>
+      </tr>`).join('');
+    const keeperHonorRows = honors.keepers.map((h,i)=>`
+      <tr class="${i===0?'rank1':''}">
+        <td>${i+1}</td><td class="team-cell">${h.name}</td>
+        <td class="mono" style="font-weight:700;color:var(--gold)">${h.count}</td>
+      </tr>`).join('');
+
     return `
       <section class="block">
         <h2>ترتيب دوري — ${league.name}</h2>
@@ -675,6 +718,24 @@ function renderStandingsPage(){
           <table>
             <thead><tr><th>#</th><th style="text-align:right">اللاعب</th><th>الأهداف</th></tr></thead>
             <tbody>${scorersRows || `<tr><td colspan="3" class="subtle">لا يوجد هدافون مضافون بعد</td></tr>`}</tbody>
+          </table>
+        </div>
+      </section>
+      <section class="block">
+        <h2>⭐ أفضل لاعب — تراكمي (${league.name})</h2>
+        <div class="table-scroll scorers-table">
+          <table>
+            <thead><tr><th>#</th><th style="text-align:right">اللاعب</th><th>عدد المرات</th></tr></thead>
+            <tbody>${playerHonorRows || `<tr><td colspan="3" class="subtle">لم يُختر أفضل لاعب بعد</td></tr>`}</tbody>
+          </table>
+        </div>
+      </section>
+      <section class="block">
+        <h2>🧤 أفضل حارس — تراكمي (${league.name})</h2>
+        <div class="table-scroll scorers-table">
+          <table>
+            <thead><tr><th>#</th><th style="text-align:right">اللاعب</th><th>عدد المرات</th></tr></thead>
+            <tbody>${keeperHonorRows || `<tr><td colspan="3" class="subtle">لم يُختر أفضل حارس بعد</td></tr>`}</tbody>
           </table>
         </div>
       </section>
@@ -720,8 +781,181 @@ function renderLineupsPage(){
   `;
 }
 
+async function buildMatchdayImage(league, md){
+  try{ await document.fonts.ready; }catch(e){}
+
+  const width = 1080;
+  const rowH = 140;
+  const headerH = 260;
+  const matches = md.matches || [];
+  const bestPlayer = (md.bestPlayer||'').trim();
+  const bestGoalkeeper = (md.bestGoalkeeper||'').trim();
+  const hasHonors = !!(bestPlayer || bestGoalkeeper);
+  const honorsH = hasHonors ? 210 : 0;
+  const footerH = 90;
+  const height = headerH + Math.max(matches.length,1) * rowH + honorsH + footerH;
+
+  const scaleFactor = 2; // renders at 2x pixel density for a crisper, higher-quality image
+  const canvas = document.createElement('canvas');
+  canvas.width = width * scaleFactor;
+  canvas.height = height * scaleFactor;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scaleFactor, scaleFactor);
+  ctx.direction = 'rtl';
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  // page background — matches site's --bg cream tone
+  ctx.fillStyle = '#f6f3e9';
+  ctx.fillRect(0,0,width,height);
+
+  // header band — warm gold gradient (kept away from green per request)
+  const headerGrad = ctx.createLinearGradient(0,0,width,headerH);
+  headerGrad.addColorStop(0,'#c9971f');
+  headerGrad.addColorStop(1,'#8f6a1a');
+  ctx.fillStyle = headerGrad;
+  ctx.fillRect(0,0,width,headerH);
+
+  ctx.fillStyle = '#1f4d33';
+  ctx.beginPath(); ctx.arc(width/2, 56, 9, 0, Math.PI*2); ctx.fill();
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#1f4d33';
+  ctx.font = '800 34px Cairo, sans-serif';
+  ctx.fillText('المحطة الرياضية', width/2, 100);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '900 50px Cairo, sans-serif';
+  ctx.fillText(league.name, width/2, 168);
+
+  ctx.fillStyle = 'rgba(31,77,51,0.85)';
+  ctx.font = '700 32px Cairo, sans-serif';
+  ctx.fillText(md.name, width/2, 218);
+
+  ctx.strokeStyle = '#1f4d33';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(width/2-60, headerH-20); ctx.lineTo(width/2+60, headerH-20); ctx.stroke();
+
+  if(!matches.length){
+    ctx.fillStyle = '#847f68';
+    ctx.font = '700 32px Cairo, sans-serif';
+    ctx.fillText('لا توجد مباريات في هذه الجولة', width/2, headerH + rowH/2);
+  }
+
+  matches.forEach((m,i)=>{
+    const y = headerH + i * rowH;
+    ctx.fillStyle = i % 2 === 0 ? '#ffffff' : '#f1eee0';
+    ctx.fillRect(60, y + 10, width - 120, rowH - 20);
+    ctx.strokeStyle = '#ddd5ba';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(60, y + 10, width - 120, rowH - 20);
+
+    const homeN = teamName(league, m.home);
+    const awayN = teamName(league, m.away);
+    const scoreText = m.status === 'finished'
+      ? `${m.homeScore} - ${m.awayScore}`
+      : (m.status === 'live' ? `${m.homeScore ?? 0} - ${m.awayScore ?? 0}` : 'VS');
+    const midY = y + rowH/2;
+
+    ctx.fillStyle = '#1f4d33';
+    ctx.font = '700 36px Cairo, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(homeN, width - 100, midY + 6, 320);
+
+    ctx.textAlign = 'left';
+    ctx.fillText(awayN, 100, midY + 6, 320);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#b9862b';
+    ctx.font = '900 42px "Space Mono", monospace';
+    ctx.fillText(scoreText, width/2, midY + 10);
+
+    ctx.font = '600 18px Tajawal, sans-serif';
+    if(m.status === 'live'){
+      ctx.fillStyle = '#b8412f';
+      ctx.fillText('● مباشر الآن', width/2, midY + 42);
+    } else if(m.status === 'scheduled'){
+      ctx.fillStyle = '#847f68';
+      ctx.fillText(m.date ? (m.date + (m.time ? ' - ' + m.time : '')) : 'موعد غير محدد', width/2, midY + 42);
+    } else {
+      ctx.fillStyle = '#847f68';
+      ctx.fillText('انتهت المباراة', width/2, midY + 42);
+    }
+  });
+
+  const yAfterMatches = headerH + Math.max(matches.length,1) * rowH;
+
+  if(hasHonors){
+    const boxX = 60;
+    const boxW = width - 120;
+    const boxY = yAfterMatches + 20;
+    const boxH = honorsH - 40;
+    const centerY = boxY + boxH/2;
+
+    ctx.fillStyle = '#f3e3bd';
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeStyle = '#d7a23c';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+    const drawHonorCard = (cx, icon, label, name)=>{
+      const badgeR = 34;
+      const badgeCy = centerY - 30;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(cx, badgeCy, badgeR, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#b9862b';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '32px sans-serif';
+      ctx.fillText(icon, cx, badgeCy + 2);
+      ctx.textBaseline = 'alphabetic';
+
+      ctx.fillStyle = '#8f6a1a';
+      ctx.font = '700 20px Tajawal, sans-serif';
+      ctx.fillText(label, cx, centerY + 20, boxW/2 - 40);
+
+      ctx.fillStyle = '#1f4d33';
+      ctx.font = '800 30px Cairo, sans-serif';
+      ctx.fillText(name, cx, centerY + 56, boxW/2 - 40);
+    };
+
+    if(bestPlayer && bestGoalkeeper){
+      const leftCx = boxX + boxW * 0.25;
+      const rightCx = boxX + boxW * 0.75;
+      ctx.strokeStyle = 'rgba(185,134,43,0.4)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(boxX + boxW/2, boxY + 20); ctx.lineTo(boxX + boxW/2, boxY + boxH - 20); ctx.stroke();
+
+      drawHonorCard(rightCx, '⭐', 'أفضل لاعب في الجولة', bestPlayer);
+      drawHonorCard(leftCx, '🧤', 'أفضل حارس في الجولة', bestGoalkeeper);
+    } else {
+      const cx = boxX + boxW/2;
+      if(bestPlayer) drawHonorCard(cx, '⭐', 'أفضل لاعب في الجولة', bestPlayer);
+      else if(bestGoalkeeper) drawHonorCard(cx, '🧤', 'أفضل حارس في الجولة', bestGoalkeeper);
+    }
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#847f68';
+  ctx.font = '20px Tajawal, sans-serif';
+  ctx.fillText('صُنع بواسطة المحطة الرياضية', width/2, height - 30);
+
+  return new Promise(resolve=>{ canvas.toBlob(blob=>resolve(blob), 'image/png', 1.0); });
+}
+
 function renderAdmin(){
   if(!adminUnlocked){
+    const now = Date.now();
+    if(lockoutUntil > now){
+      const secsLeft = Math.ceil((lockoutUntil - now)/1000);
+      return `
+        <div class="empty-hint">
+          <h2>محاولات كثيرة خاطئة</h2>
+          <p>تم قفل الدخول مؤقتاً. حاول مرة أخرى بعد <span id="lockoutTimer">${secsLeft}</span> ثانية.</p>
+        </div>`;
+    }
     return `
       <div class="empty-hint">
         <h2>دخول لوحة التحكم</h2>
@@ -778,6 +1012,28 @@ function renderAdmin(){
               <option value="finished" ${m.status==='finished'?'selected':''}>انتهت</option>
             </select>
             <button class="btn small" data-save-match="${m.id}">حفظ</button>
+          </div>
+          <div class="row-inline" style="margin-right:0;margin-bottom:6px;">
+            <span class="subtle">البطاقات:</span>
+            ${(m.cards||[]).map(c=>`<span class="team-chip">${c.type==='red'?'🟥':'🟨'} ${c.name} (${c.team==='home'?teamName(league,m.home):teamName(league,m.away)}) <button data-delete-card="${m.id}|${c.id}">×</button></span>`).join('') || '<span class="subtle">لا توجد بطاقات</span>'}
+          </div>
+          <div class="row-inline" style="margin-right:0;margin-bottom:14px;">
+            <select id="cardTeam_${m.id}" data-card-team-select="${m.id}" style="font-size:12px;">
+              <option value="home">${teamName(league,m.home)}</option>
+              <option value="away">${teamName(league,m.away)}</option>
+            </select>
+            <select id="cardName_${m.id}" style="font-size:12px;flex:1;min-width:120px;">
+              ${(()=>{
+                const homeTeam = league.teams.find(t=>t.id===m.home);
+                const opts = (homeTeam && homeTeam.players || []).map(p=>`<option value="${p.name}">${p.name}</option>`).join('');
+                return opts || `<option value="">لا يوجد لاعبون بهذا الفريق</option>`;
+              })()}
+            </select>
+            <select id="cardType_${m.id}" style="font-size:12px;">
+              <option value="yellow">🟨 صفراء</option>
+              <option value="red">🟥 حمراء</option>
+            </select>
+            <button class="btn small" data-add-card="${m.id}">إضافة بطاقة</button>
           </div>
         `).join('')}
         <div class="row-inline" style="margin-top:10px;">
@@ -915,13 +1171,59 @@ function attachHandlers(){
   });
 
   if(!adminUnlocked && mode==='admin'){
+    const now = Date.now();
+    if(lockoutUntil > now){
+      setTimeout(render, lockoutUntil - now + 200);
+      return;
+    }
     const submit = document.getElementById('pinSubmit');
-    if(submit) submit.onclick = ()=>{
+    if(submit) submit.onclick = async ()=>{
       const val = document.getElementById('pinInput').value;
-      if(val === ADMIN_PIN){ adminUnlocked = true; render(); }
-      else alert('رمز الدخول غير صحيح');
+      const hash = await sha256Hex(val);
+      if(hash === ADMIN_PIN_HASH){
+        adminUnlocked = true; failedPinAttempts = 0; render();
+      } else {
+        failedPinAttempts++;
+        if(failedPinAttempts >= 5){
+          lockoutUntil = Date.now() + 30000;
+          failedPinAttempts = 0;
+          render();
+        } else {
+          alert('رمز الدخول غير صحيح. المحاولات المتبقية: ' + (5 - failedPinAttempts));
+        }
+      }
     };
     return;
+  }
+  if(mode!=='admin'){
+    document.querySelectorAll('[data-share-matchday]').forEach(b=>{
+      b.onclick = async ()=>{
+        const mdId = b.dataset.shareMatchday;
+        const league = activeLeague();
+        if(!league) return;
+        const md = league.matchdays.find(x=>x.id===mdId);
+        if(!md) return;
+        const originalText = b.textContent;
+        b.textContent = '... جاري إنشاء الصورة';
+        b.disabled = true;
+        try{
+          const blob = await buildMatchdayImage(league, md);
+          const file = new File([blob], 'الجولة.png', {type:'image/png'});
+          if(navigator.canShare && navigator.canShare({files:[file]})){
+            await navigator.share({files:[file], title:`${league.name} — ${md.name}`});
+          } else {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `${league.name}-${md.name}.png`;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(()=>URL.revokeObjectURL(url), 4000);
+            alert('تم تنزيل صورة الجولة، يمكنك مشاركتها من معرض الصور');
+          }
+        }catch(e){ console.error(e); }
+        b.textContent = originalText;
+        b.disabled = false;
+      };
+    });
   }
   if(mode!=='admin') return;
 
@@ -1020,7 +1322,7 @@ function attachHandlers(){
       const home = document.getElementById('newMatchHome_'+mdId).value;
       const away = document.getElementById('newMatchAway_'+mdId).value;
       if(!home || !away || home===away){ alert('اختر فريقين مختلفين'); return; }
-      md.matches.push({id:uid(), home, away, homeScore:null, awayScore:null, status:'scheduled', date:'', time:''});
+      md.matches.push({id:uid(), home, away, homeScore:null, awayScore:null, status:'scheduled', date:'', time:'', cards:[]});
       saveState(); render();
     };
   });
@@ -1045,6 +1347,50 @@ function attachHandlers(){
       match.date = document.querySelector(`[data-date="${mId}"]`).value;
       match.time = document.querySelector(`[data-time="${mId}"]`).value;
       match.status = document.querySelector(`[data-status="${mId}"]`).value;
+      saveState(); render();
+    };
+  });
+
+  function findMatchById(mId){
+    const league = activeLeague();
+    let match;
+    league.matchdays.forEach(md=>{ const f = md.matches.find(m=>m.id===mId); if(f) match=f; });
+    return match;
+  }
+  document.querySelectorAll('[data-card-team-select]').forEach(sel=>{
+    sel.onchange = ()=>{
+      const mId = sel.dataset.cardTeamSelect;
+      const match = findMatchById(mId);
+      const league = activeLeague();
+      if(!match || !league) return;
+      const teamId = sel.value === 'home' ? match.home : match.away;
+      const team = league.teams.find(t=>t.id===teamId);
+      const nameSelect = document.getElementById('cardName_'+mId);
+      const opts = (team && team.players || []).map(p=>`<option value="${p.name}">${p.name}</option>`).join('');
+      nameSelect.innerHTML = opts || `<option value="">لا يوجد لاعبون بهذا الفريق</option>`;
+    };
+  });
+  document.querySelectorAll('[data-add-card]').forEach(b=>{
+    b.onclick = ()=>{
+      const mId = b.dataset.addCard;
+      const match = findMatchById(mId);
+      if(!match) return;
+      const nameSelect = document.getElementById('cardName_'+mId);
+      const name = nameSelect.value.trim();
+      if(!name){ alert('لا يوجد لاعبون في هذا الفريق بعد، أضف لاعبين أولاً من صفحة التشكيلات'); return; }
+      const team = document.getElementById('cardTeam_'+mId).value;
+      const type = document.getElementById('cardType_'+mId).value;
+      if(!match.cards) match.cards = [];
+      match.cards.push({id:uid(), name, team, type});
+      saveState(); render();
+    };
+  });
+  document.querySelectorAll('[data-delete-card]').forEach(b=>{
+    b.onclick = ()=>{
+      const [mId, cardId] = b.dataset.deleteCard.split('|');
+      const match = findMatchById(mId);
+      if(!match) return;
+      match.cards = match.cards.filter(c=>c.id!==cardId);
       saveState(); render();
     };
   });
