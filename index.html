@@ -263,6 +263,38 @@
   .acc-card.acc-nested .acc-body{padding:4px 16px 16px;padding-top:12px;}
   .acc-card.acc-nested:hover summary{background:rgba(185,134,43,0.08);}
 
+  /* redesigned per-match admin block */
+  .match-block{
+    border-radius:12px;padding:16px;margin-bottom:16px;
+    border:1px solid var(--border);
+  }
+  .match-block.alt-a{background:#eef3ec;border-right:5px solid var(--brand-dark);}
+  .match-block.alt-b{background:#fdf6e8;border-right:5px solid var(--gold);}
+  .match-block .match-block-head{
+    font-family:'Cairo';font-weight:700;font-size:14px;color:var(--brand-dark);
+    margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
+  }
+  .match-num-badge{
+    display:inline-flex;align-items:center;justify-content:center;
+    background:var(--brand-dark);color:#fff;border-radius:6px;
+    padding:2px 10px;font-size:12px;font-family:'Cairo';font-weight:700;
+  }
+  .match-block.alt-b .match-num-badge{background:var(--gold);}
+  .cards-zone{
+    background:#fbeeee;border:1px dashed #d9a5a5;border-radius:10px;
+    padding:10px 12px;margin-top:10px;
+  }
+  .cards-zone .zone-title{
+    font-family:'Cairo';font-weight:700;font-size:13px;color:#a04545;margin-bottom:6px;
+  }
+  .add-match-zone{
+    background:var(--panel);border:2px dashed var(--gold);border-radius:12px;
+    padding:16px;margin-top:14px;
+  }
+  .add-match-zone .zone-title{
+    font-family:'Cairo';font-weight:700;font-size:14px;color:var(--gold);margin-bottom:10px;
+  }
+
   .pitch-wrap{
     position:relative;width:100%;max-width:300px;aspect-ratio:2/3;
     margin:0 auto 16px;border-radius:12px;overflow:hidden;
@@ -582,14 +614,14 @@ function computeStandings(league){
 }
 
 function findFeatured(league){
-  let live = null, next = null;
+  let live = null;
   const all = [];
   league.matchdays.forEach(md=> md.matches.forEach(m=> all.push(m)));
   live = all.find(m=>m.status==='live') || null;
   const scheduled = all.filter(m=>m.status==='scheduled' && m.date)
     .sort((a,b)=> (a.date+a.time).localeCompare(b.date+b.time));
-  next = scheduled[0] || null;
-  return {live, next};
+  // returns up to two upcoming matches so the homepage can show both
+  return {live, next: scheduled[0] || null, next2: scheduled[1] || null};
 }
 
 function fmtDate(m){
@@ -636,8 +668,19 @@ function renderPublic(){
       </div>` : '';
     return `${noLeagueAnnouncements}<div class="empty-hint"><h2>لا يوجد دوري بعد</h2><p>انتقل إلى لوحة التحكم لإنشاء أول دوري.</p></div>`;
   }
-  const {live, next} = findFeatured(league);
+  const {live, next, next2} = findFeatured(league);
   const standings = computeStandings(league);
+
+  const upcomingBoard = (m, label)=> m ? `
+    <div class="board next">
+      <span class="tag">${label}</span>
+      <div class="matchup">
+        <div class="team-block"><div class="team-name">${teamName(league,m.home)}</div></div>
+        <div class="score mono"><span class="vs-label" style="font-size:20px">VS</span></div>
+        <div class="team-block"><div class="team-name">${teamName(league,m.away)}</div></div>
+      </div>
+      <div class="meta">${fmtDate(m)}</div>
+    </div>` : `<div class="board empty">لا توجد مباراة قادمة مجدولة</div>`;
 
   const heroLive = live ? `
     <div class="board live">
@@ -648,18 +691,13 @@ function renderPublic(){
         <div class="team-block"><div class="team-name">${teamName(league,live.away)}</div></div>
       </div>
       <div class="meta">${fmtDate(live)}</div>
-    </div>` : `<div class="board empty">لا توجد مباراة جارية الآن</div>`;
+    </div>` : null;
 
-  const heroNext = next ? `
-    <div class="board next">
-      <span class="tag">المباراة القادمة</span>
-      <div class="matchup">
-        <div class="team-block"><div class="team-name">${teamName(league,next.home)}</div></div>
-        <div class="score mono"><span class="vs-label" style="font-size:20px">VS</span></div>
-        <div class="team-block"><div class="team-name">${teamName(league,next.away)}</div></div>
-      </div>
-      <div class="meta">${fmtDate(next)}</div>
-    </div>` : `<div class="board empty">لا توجد مباراة قادمة مجدولة</div>`;
+  // live match exists → live + next upcoming. no live → the two next upcoming matches.
+  const heroFirst = heroLive || upcomingBoard(next, 'المباراة القادمة');
+  const heroSecond = heroLive
+    ? upcomingBoard(next, 'المباراة القادمة')
+    : upcomingBoard(next2, 'المباراة التي تليها');
 
   const standingsRows = standings.map((r,i)=>`
     <tr class="${i===0?'rank1':''}">
@@ -713,7 +751,7 @@ function renderPublic(){
     </div>` : '';
 
   return `
-    <div class="hero">${heroLive}${heroNext}</div>
+    <div class="hero">${heroFirst}${heroSecond}</div>
     ${announcementsHtml}
     <section class="block">
       <h2>جدول المباريات والنتائج</h2>
@@ -1094,53 +1132,64 @@ function renderAdmin(){
           <input type="text" placeholder="أفضل حارس في الجولة" value="${md.bestGoalkeeper||''}" data-md-best-gk="${md.id}" style="flex:1;min-width:160px;">
           <button class="btn small" data-save-matchday-honors="${md.id}">حفظ</button>
         </div>
-        ${md.matches.map(m=>`
-          <div class="match-admin-row">
-            <select disabled>${league.teams.map(t=>`<option ${t.id===m.home?'selected':''}>${t.name}</option>`).join('')}</select>
-            <div style="display:flex;gap:4px;justify-content:center;">
-              <input type="number" min="0" class="score-input" value="${m.homeScore ?? ''}" placeholder="-" data-score-home="${m.id}">
-              <input type="number" min="0" class="score-input" value="${m.awayScore ?? ''}" placeholder="-" data-score-away="${m.id}">
+        ${md.matches.map((m,mi)=>`
+          <div class="match-block ${mi % 2 === 0 ? 'alt-a' : 'alt-b'}">
+            <div class="match-block-head">
+              <span><span class="match-num-badge">مباراة ${mi+1}</span> &nbsp; ${teamName(league,m.home)} × ${teamName(league,m.away)}</span>
+              <button class="btn danger small" data-delete-match="${m.id}">حذف المباراة</button>
             </div>
-            <select disabled>${league.teams.map(t=>`<option ${t.id===m.away?'selected':''}>${t.name}</option>`).join('')}</select>
-            <button class="btn danger small" data-delete-match="${m.id}">حذف</button>
-          </div>
-          <div class="row-inline" style="margin-right:0;margin-bottom:14px;">
-            <input type="date" data-date="${m.id}" value="${m.date||''}" style="font-size:12px;">
-            <input type="time" data-time="${m.id}" value="${m.time||''}" style="font-size:12px;">
-            <select data-status="${m.id}" style="font-size:12px;">
-              <option value="scheduled" ${m.status==='scheduled'?'selected':''}>مجدولة</option>
-              <option value="live" ${m.status==='live'?'selected':''}>مباشرة الآن</option>
-              <option value="finished" ${m.status==='finished'?'selected':''}>انتهت</option>
-            </select>
-            <button class="btn small" data-save-match="${m.id}">حفظ</button>
-          </div>
-          <div class="row-inline" style="margin-right:0;margin-bottom:6px;">
-            <span class="subtle">البطاقات:</span>
-            ${(m.cards||[]).map(c=>`<span class="team-chip">${c.type==='red'?'🟥':'🟨'} ${c.name} (${c.team==='home'?teamName(league,m.home):teamName(league,m.away)}) <button data-delete-card="${m.id}|${c.id}">×</button></span>`).join('') || '<span class="subtle">لا توجد بطاقات</span>'}
-          </div>
-          <div class="row-inline" style="margin-right:0;margin-bottom:14px;">
-            <select id="cardTeam_${m.id}" data-card-team-select="${m.id}" style="font-size:12px;">
-              <option value="home">${teamName(league,m.home)}</option>
-              <option value="away">${teamName(league,m.away)}</option>
-            </select>
-            <select id="cardName_${m.id}" style="font-size:12px;flex:1;min-width:120px;">
-              ${(()=>{
-                const homeTeam = league.teams.find(t=>t.id===m.home);
-                const opts = (homeTeam && homeTeam.players || []).map(p=>`<option value="${p.name}">${p.name}</option>`).join('');
-                return opts || `<option value="">لا يوجد لاعبون بهذا الفريق</option>`;
-              })()}
-            </select>
-            <select id="cardType_${m.id}" style="font-size:12px;">
-              <option value="yellow">🟨 صفراء</option>
-              <option value="red">🟥 حمراء</option>
-            </select>
-            <button class="btn small" data-add-card="${m.id}">إضافة بطاقة</button>
+            <div class="match-admin-row">
+              <select disabled>${league.teams.map(t=>`<option ${t.id===m.home?'selected':''}>${t.name}</option>`).join('')}</select>
+              <div style="display:flex;gap:4px;justify-content:center;">
+                <input type="number" min="0" class="score-input" value="${m.homeScore ?? ''}" placeholder="-" data-score-home="${m.id}">
+                <input type="number" min="0" class="score-input" value="${m.awayScore ?? ''}" placeholder="-" data-score-away="${m.id}">
+              </div>
+              <select disabled>${league.teams.map(t=>`<option ${t.id===m.away?'selected':''}>${t.name}</option>`).join('')}</select>
+              <span></span>
+            </div>
+            <div class="row-inline" style="margin-right:0;margin-bottom:0;">
+              <input type="date" data-date="${m.id}" value="${m.date||''}" style="font-size:12px;">
+              <input type="time" data-time="${m.id}" value="${m.time||''}" style="font-size:12px;">
+              <select data-status="${m.id}" style="font-size:12px;">
+                <option value="scheduled" ${m.status==='scheduled'?'selected':''}>مجدولة</option>
+                <option value="live" ${m.status==='live'?'selected':''}>مباشرة الآن</option>
+                <option value="finished" ${m.status==='finished'?'selected':''}>انتهت</option>
+              </select>
+              <button class="btn small" data-save-match="${m.id}">حفظ</button>
+            </div>
+            <div class="cards-zone">
+              <div class="zone-title">🟨🟥 بطاقات المباراة</div>
+              <div class="row-inline" style="margin-bottom:6px;">
+                ${(m.cards||[]).map(c=>`<span class="team-chip">${c.type==='red'?'🟥':'🟨'} ${c.name} (${c.team==='home'?teamName(league,m.home):teamName(league,m.away)}) <button data-delete-card="${m.id}|${c.id}">×</button></span>`).join('') || '<span class="subtle">لا توجد بطاقات</span>'}
+              </div>
+              <div class="row-inline" style="margin-bottom:0;">
+                <select id="cardTeam_${m.id}" data-card-team-select="${m.id}" style="font-size:12px;">
+                  <option value="home">${teamName(league,m.home)}</option>
+                  <option value="away">${teamName(league,m.away)}</option>
+                </select>
+                <select id="cardName_${m.id}" style="font-size:12px;flex:1;min-width:120px;">
+                  ${(()=>{
+                    const homeTeam = league.teams.find(t=>t.id===m.home);
+                    const opts = (homeTeam && homeTeam.players || []).map(p=>`<option value="${p.name}">${p.name}</option>`).join('');
+                    return opts || `<option value="">لا يوجد لاعبون بهذا الفريق</option>`;
+                  })()}
+                </select>
+                <select id="cardType_${m.id}" style="font-size:12px;">
+                  <option value="yellow">🟨 صفراء</option>
+                  <option value="red">🟥 حمراء</option>
+                </select>
+                <button class="btn small" data-add-card="${m.id}">إضافة بطاقة</button>
+              </div>
+            </div>
           </div>
         `).join('')}
-        <div class="row-inline" style="margin-top:10px;">
-          <select id="newMatchHome_${md.id}"><option value="">الفريق المضيف</option>${teamOptions}</select>
-          <select id="newMatchAway_${md.id}"><option value="">الفريق الضيف</option>${teamOptions}</select>
-          <button class="btn small" data-add-match="${md.id}">إضافة مباراة</button>
+        <div class="add-match-zone">
+          <div class="zone-title">➕ إضافة مباراة جديدة إلى ${md.name}</div>
+          <div class="row-inline" style="margin-bottom:0;">
+            <select id="newMatchHome_${md.id}"><option value="">الفريق المضيف</option>${teamOptions}</select>
+            <select id="newMatchAway_${md.id}"><option value="">الفريق الضيف</option>${teamOptions}</select>
+            <button class="btn small" data-add-match="${md.id}">إضافة المباراة</button>
+          </div>
         </div>
       `;
       return acc('matchday_'+md.id, `📅 ${md.name}`, body, false, true);
