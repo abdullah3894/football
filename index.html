@@ -248,6 +248,21 @@
   }
   @keyframes spin{ to{ transform:rotate(360deg); } }
 
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    display:flex;align-items:center;gap:10px;
+    background:var(--brand-dark);color:#fff;
+    padding:12px 22px;border-radius:999px;font-family:'Cairo';font-weight:700;font-size:14px;
+    box-shadow:0 6px 24px rgba(0,0,0,0.25);z-index:9999;
+    opacity:0;pointer-events:none;transition:opacity .25s ease, transform .25s ease;
+    max-width:90vw;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast-icon{font-size:16px;line-height:1;}
+  .toast-success{background:var(--brand-dark);}
+  .toast-saving{background:var(--gold);color:#fff;}
+  .toast-error{background:var(--red-card);}
+
   .acc-card{
     background:var(--panel);border:1px solid var(--border);border-radius:12px;
     margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden;
@@ -571,10 +586,32 @@ async function loadState(){
   render();
 }
 
+let toastTimer = null;
+function showToast(message, type='success'){
+  let toast = document.getElementById('toast');
+  if(!toast){
+    toast = document.createElement('div');
+    toast.id = 'toast';
+    document.body.appendChild(toast);
+  }
+  toast.className = 'toast toast-' + type + ' show';
+  const icon = type==='success' ? '✓' : (type==='saving' ? '⏳' : '⚠️');
+  toast.innerHTML = `<span class="toast-icon">${icon}</span><span>${message}</span>`;
+  clearTimeout(toastTimer);
+  if(type !== 'saving'){
+    toastTimer = setTimeout(()=>{ toast.classList.remove('show'); }, 2200);
+  }
+}
+
 async function saveState(){
+  showToast('جاري الحفظ...', 'saving');
   try{
     await set(ref(db, 'league-app-state'), window.state);
-  }catch(e){ console.error('فشل في حفظ وتحديث البيانات سحابياً', e); }
+    showToast('تم الحفظ', 'success');
+  }catch(e){
+    console.error('فشل في حفظ وتحديث البيانات سحابياً', e);
+    showToast('تعذّر الحفظ، تحقق من الاتصال', 'error');
+  }
 }
 
 function activeLeague(){
@@ -1425,7 +1462,6 @@ function attachHandlers(){
   if(saveRegulationsBtn) saveRegulationsBtn.onclick = ()=>{
     window.state.regulationsText = document.getElementById('regulationsTextArea').value;
     saveState();
-    alert('تم حفظ اللوائح');
   };
 
   const addLeagueBtn = document.getElementById('addLeagueBtn');
